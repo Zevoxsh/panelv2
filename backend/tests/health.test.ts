@@ -1,5 +1,27 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import { buildApp } from '../src/app.js'
+
+vi.mock('../src/plugins/redis.js', () => ({
+  default: async (fastify: any) => {
+    fastify.decorate('redis', {
+      get: vi.fn().mockResolvedValue(null),
+      setex: vi.fn().mockResolvedValue('OK'),
+      del: vi.fn().mockResolvedValue(1),
+      expire: vi.fn().mockResolvedValue(1),
+    })
+  },
+}))
+
+vi.mock('../src/db/index.js', () => ({
+  db: {
+    select: vi.fn().mockReturnThis(),
+    from: vi.fn().mockReturnThis(),
+    where: vi.fn().mockReturnThis(),
+    limit: vi.fn().mockResolvedValue([]),
+    update: vi.fn().mockReturnThis(),
+    set: vi.fn().mockReturnThis(),
+  },
+}))
 
 describe('GET /health', () => {
   it('returns ok', async () => {
