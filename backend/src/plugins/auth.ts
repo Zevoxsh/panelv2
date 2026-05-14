@@ -25,8 +25,12 @@ export default fp(async (fastify) => {
     if (sessionId) {
       const raw = await fastify.redis.get(`session:${sessionId}`)
       if (raw) {
-        request.session = JSON.parse(raw) as SessionData
-        await fastify.redis.expire(`session:${sessionId}`, 86400)
+        try {
+          request.session = JSON.parse(raw) as SessionData
+          await fastify.redis.expire(`session:${sessionId}`, 86400)
+        } catch {
+          // malformed session — treat as no session
+        }
         return
       }
     }
@@ -37,7 +41,7 @@ export default fp(async (fastify) => {
       const token = authHeader.slice(7)
       const hash = createHash('sha256').update(token).digest('hex')
       const [key] = await db
-        .select({ id: apiKeys.id, userId: apiKeys.userId, type: apiKeys.type, expiresAt: apiKeys.expiresAt })
+        .select({ id: apiKeys.id, userId: apiKeys.userId, expiresAt: apiKeys.expiresAt })
         .from(apiKeys)
         .where(eq(apiKeys.keyHash, hash))
         .limit(1)
@@ -58,18 +62,14 @@ export default fp(async (fastify) => {
   })
 })
 
-export function requireAuth(request: FastifyRequest, reply: FastifyReply, done: () => void) {
+export async function requireAuth(request: FastifyRequest, reply: FastifyReply) {
   if (!request.session) {
-    reply.status(401).send({ error: 'Unauthorized' })
-    return
+    return reply.status(401).send({ error: 'Unauthorized' })
   }
-  done()
 }
 
-export function requireAdmin(request: FastifyRequest, reply: FastifyReply, done: () => void) {
+export async function requireAdmin(request: FastifyRequest, reply: FastifyReply) {
   if (!request.session || request.session.role !== 'admin') {
-    reply.status(403).send({ error: 'Forbidden' })
-    return
+    return reply.status(403).send({ error: 'Forbidden' })
   }
-  done()
 }
