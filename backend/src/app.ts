@@ -2,6 +2,7 @@ import Fastify from 'fastify'
 import cookie from '@fastify/cookie'
 import redisPlugin from './plugins/redis.js'
 import authPlugin from './plugins/auth.js'
+import { authRoutes } from './modules/auth/auth.routes.js'
 
 export function buildApp() {
   const app = Fastify({ logger: process.env.NODE_ENV !== 'test' })
@@ -9,6 +10,7 @@ export function buildApp() {
   app.register(cookie)
   app.register(redisPlugin)
   app.register(authPlugin)
+  app.register(authRoutes)
 
   app.get('/health', async () => ({ status: 'ok' }))
 
