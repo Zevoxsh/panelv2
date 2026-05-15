@@ -1,0 +1,1 @@
+ALTER TABLE "nodes" ADD COLUMN "token_id" varchar(32) NOT NULL;

@@ -1,0 +1,1 @@
+ALTER TABLE "eggs" ADD COLUMN "startup_done_string" varchar(255) DEFAULT ']' NOT NULL;
