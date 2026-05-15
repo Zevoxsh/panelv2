@@ -1,0 +1,20 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(node *)",
+      "Bash(git init *)",
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Bash(find backend *)",
+      "Bash(find frontend *)",
+      "Bash(npm install *)",
+      "Bash(npm test *)",
+      "Bash(npx vitest *)",
+      "PowerShell(New-Item *)",
+      "PowerShell(Get-ChildItem \"C:\\\\Users\\\\Administrator\\\\Documents\\\\panel\\\\backend\\\\src\" -Recurse | Where-Object { -not $_.PSIsContainer } | Select-Object -ExpandProperty FullName)",
+      "PowerShell(cd \"C:\\\\Users\\\\Administrator\\\\Documents\\\\panel\\\\backend\"; $env:DATABASE_URL=\"postgresql://panel:panel@localhost:5432/panel\"; node --loader tsx/esm node_modules/.bin/drizzle-kit generate 2>&1)",
+      "PowerShell(cd \"C:\\\\Users\\\\Administrator\\\\Documents\\\\panel\\\\backend\"; $env:DATABASE_URL=\"postgresql://panel:panel@localhost:5432/panel\"; npx drizzle-kit generate 2>&1)",
+      "Bash(DATABASE_URL=postgresql://panel:panel@localhost:5432/panel npx drizzle-kit *)"
+    ]
+  }
+}
