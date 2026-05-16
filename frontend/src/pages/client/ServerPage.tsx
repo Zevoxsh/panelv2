@@ -423,7 +423,13 @@ export default function ServerPage() {
     const cmd = command.trim()
     if (!cmd || status === 'offline') return
     setCommand('')
-    try { await api.post(`/client/servers/${id}/players/command`, { command: cmd }) } catch {}
+    const safe = cmd.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    setLines(prev => [...prev, `<span style="color:#64748b">&gt; ${safe}</span>`])
+    try {
+      await api.post(`/client/servers/${id}/players/command`, { command: cmd })
+    } catch (err: any) {
+      setLines(prev => [...prev, `<span style="color:#f87171">Error: ${err.message ?? 'Command failed'}</span>`])
+    }
   }
 
   async function power(action: 'start' | 'stop' | 'restart' | 'kill') {
