@@ -418,18 +418,14 @@ export default function ServerPage() {
     }
   }, [id, server?.id, server?.suspended, reconnectTick])
 
-  async function sendCommand(e: React.FormEvent) {
+  function sendCommand(e: React.FormEvent) {
     e.preventDefault()
     const cmd = command.trim()
-    if (!cmd || status === 'offline') return
+    if (!cmd || status === 'offline' || !wsRef.current) return
     setCommand('')
     const safe = cmd.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
     setLines(prev => [...prev, `<span style="color:#64748b">&gt; ${safe}</span>`])
-    try {
-      await api.post(`/client/servers/${id}/players/command`, { command: cmd })
-    } catch (err: any) {
-      setLines(prev => [...prev, `<span style="color:#f87171">Error: ${err.message ?? 'Command failed'}</span>`])
-    }
+    wsRef.current.send(JSON.stringify({ event: 'send command', args: [cmd] }))
   }
 
   async function power(action: 'start' | 'stop' | 'restart' | 'kill') {
@@ -486,9 +482,9 @@ export default function ServerPage() {
     : /sponge/.test((server.eggName ?? '').toLowerCase()) ? 'sponge'
     : undefined
 
-  async function sendCommandStr(cmd: string) {
-    if (status === 'offline') return
-    try { await api.post(`/client/servers/${id}/players/command`, { command: cmd }) } catch {}
+  function sendCommandStr(cmd: string) {
+    if (status === 'offline' || !wsRef.current) return
+    wsRef.current.send(JSON.stringify({ event: 'send command', args: [cmd] }))
   }
   const isRunning = status === 'online' || status === 'starting'
 
@@ -928,9 +924,9 @@ export default function ServerPage() {
       {server.installed && tab === 'players' && mcType.isMc && (
         <div className="flex-1 min-h-0 flex flex-col">
           <PlayersTab
-            serverId={server.id}
             lines={lines}
             status={status}
+            onSendCommand={sendCommandStr}
           />
         </div>
       )}
