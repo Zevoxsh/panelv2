@@ -337,6 +337,8 @@ export default function ServerPage() {
   const [connected, setConnected] = useState(false)
   const [wsError, setWsError] = useState<string | null>(null)
   const [reconnectTick, setReconnectTick] = useState(0)
+  const [eulaRequired, setEulaRequired] = useState(false)
+  const [eulaAccepting, setEulaAccepting] = useState(false)
 
   const wsRef = useRef<WebSocket | null>(null)
   const consoleRef = useRef<HTMLDivElement>(null)
@@ -367,7 +369,11 @@ export default function ServerPage() {
         try { msg = JSON.parse(e.data) } catch { return }
         const { event, args } = msg
         if (event === 'connected') { retryDelay = 3000; setConnected(true) }
-        else if (event === 'console output' && args[0]) setLines(p => [...p.slice(-999), ansiToHtml(args[0].replace(ANSI_NON_COLOR, ''))])
+        else if (event === 'console output' && args[0]) {
+          const raw = args[0].replace(ANSI_NON_COLOR, '')
+          setLines(p => [...p.slice(-999), ansiToHtml(raw)])
+          if (raw.includes('You need to agree to the EULA')) setEulaRequired(true)
+        }
         else if (event === 'install output' && args[0]) setInstallLines(p => [...p.slice(-999), ansiToHtml(args[0].replace(ANSI_NON_COLOR, ''))])
         else if (event === 'install completed') { setInstallDone(true); queryClient.invalidateQueries({ queryKey: ['client', 'servers', id] }) }
         else if (event === 'status' && args[0]) setStatus((args[0] === 'running' ? 'online' : args[0]) as ServerStatus)
@@ -404,6 +410,22 @@ export default function ServerPage() {
     await api.post(`/client/servers/${id}/power`, { action })
   }
 
+  async function acceptEula() {
+    if (!id || eulaAccepting) return
+    setEulaAccepting(true)
+    try {
+      let content = ''
+      try { content = await api.getText(`/client/servers/${id}/files/contents?file=/eula.txt`) } catch {}
+      const updated = content.includes('eula=')
+        ? content.replace(/eula=false/gi, 'eula=true')
+        : content + '\neula=true\n'
+      await api.postText(`/client/servers/${id}/files/write?file=/eula.txt`, updated)
+      setEulaRequired(false)
+      await power('start')
+    } catch {}
+    setEulaAccepting(false)
+  }
+
   if (isLoading) return (
     <div className="flex items-center justify-center h-48">
       <Loader2 size={20} className="text-slate-600 animate-spin" />
@@ -431,6 +453,41 @@ export default function ServerPage() {
 
   return (
     <div className="h-full flex flex-col">
+
+      {/* ── EULA modal ── */}
+      {eulaRequired && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(8px)' }}>
+          <div className="panel rounded-2xl p-8 max-w-md w-full shadow-2xl border border-yellow-500/20 animate-fade-in">
+            <div className="w-12 h-12 rounded-xl bg-yellow-500/[0.12] border border-yellow-500/25 flex items-center justify-center mx-auto mb-5">
+              <span className="text-yellow-400 text-2xl">⚠</span>
+            </div>
+            <h2 className="text-white text-lg font-bold text-center mb-2">Minecraft EULA Required</h2>
+            <p className="text-slate-400 text-sm text-center leading-relaxed mb-6">
+              To run this server you must agree to Mojang's End User License Agreement.
+              By clicking <span className="text-white font-medium">Accept &amp; Start</span> you confirm you have read and accept the{' '}
+              <a href="https://aka.ms/MinecraftEULA" target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:underline">Minecraft EULA</a>.
+            </p>
+            <div className="bg-black/30 rounded-lg px-4 py-3 mb-6 font-mono text-xs text-yellow-300 border border-yellow-500/10">
+              You need to agree to the EULA in order to run the server. Go to eula.txt for more info.
+            </div>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setEulaRequired(false)}
+                className="flex-1 py-2.5 rounded-xl border border-white/[0.08] text-slate-400 hover:text-slate-200 hover:bg-white/[0.05] text-sm font-medium transition-all"
+              >
+                Dismiss
+              </button>
+              <button
+                onClick={acceptEula}
+                disabled={eulaAccepting}
+                className="flex-1 py-2.5 rounded-xl bg-yellow-500 hover:bg-yellow-400 disabled:opacity-50 text-black font-bold text-sm transition-all"
+              >
+                {eulaAccepting ? 'Accepting…' : 'Accept & Start'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ── Server header ── */}
       <div className="px-6 pt-5 pb-4 shrink-0">
