@@ -613,56 +613,56 @@ export default function ServerPage() {
 
       {/* ══ STARTUP TAB ══════════════════════════════════════════════════════ */}
       {server.installed && tab === 'startup' && (
-        <div className="flex-1 overflow-y-auto">
+        <div className="flex-1 min-h-0 overflow-y-auto">
           <StartupTab server={server} />
         </div>
       )}
 
       {/* ══ SETTINGS TAB ═════════════════════════════════════════════════════ */}
       {server.installed && tab === 'settings' && (
-        <div className="flex-1 overflow-y-auto">
+        <div className="flex-1 min-h-0 overflow-y-auto">
           <SettingsTab server={server} />
         </div>
       )}
 
       {/* ══ DATABASES TAB ════════════════════════════════════════════════════ */}
       {server.installed && tab === 'databases' && (
-        <div className="flex-1 overflow-y-auto">
+        <div className="flex-1 min-h-0 flex flex-col">
           <DatabasesTab serverId={server.id} />
         </div>
       )}
 
       {/* ══ BACKUPS TAB ══════════════════════════════════════════════════════ */}
       {server.installed && tab === 'backups' && (
-        <div className="flex-1 overflow-y-auto">
+        <div className="flex-1 min-h-0 flex flex-col">
           <BackupsTab serverId={server.id} />
         </div>
       )}
 
       {/* ══ SCHEDULES TAB ════════════════════════════════════════════════════ */}
       {server.installed && tab === 'schedules' && (
-        <div className="flex-1 overflow-y-auto">
+        <div className="flex-1 min-h-0 flex flex-col">
           <SchedulesTab serverId={server.id} />
         </div>
       )}
 
       {/* ══ USERS TAB ════════════════════════════════════════════════════════ */}
       {server.installed && tab === 'users' && (
-        <div className="flex-1 overflow-y-auto">
+        <div className="flex-1 min-h-0 flex flex-col">
           <SubUsersTab serverId={server.id} />
         </div>
       )}
 
       {/* ══ NETWORK TAB ══════════════════════════════════════════════════════ */}
       {server.installed && tab === 'network' && (
-        <div className="flex-1 overflow-y-auto">
+        <div className="flex-1 min-h-0 flex flex-col">
           <NetworkTab serverId={server.id} />
         </div>
       )}
 
       {/* ══ ACTIVITY TAB ═════════════════════════════════════════════════════ */}
       {server.installed && tab === 'activity' && (
-        <div className="flex-1 overflow-y-auto">
+        <div className="flex-1 min-h-0 flex flex-col">
           <ActivityTab serverId={server.id} />
         </div>
       )}
