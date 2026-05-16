@@ -1,10 +1,10 @@
 import { useState, useEffect, useRef } from 'react'
-import { useParams, Link } from 'react-router-dom'
+import { useParams, Link, useSearchParams } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { api, wsUrl } from '../../lib/api'
 import {
   ChevronLeft, Play, RotateCcw, Square, Zap,
-  Send, Loader2, CheckCircle2, ExternalLink, Cpu, MemoryStick, HardDrive, Wifi,
+  Send, Loader2, CheckCircle2,
 } from 'lucide-react'
 import FileManagerTab from './FileManagerTab'
 
@@ -51,27 +51,7 @@ const STATUS_TEXT: Record<ServerStatus, string> = {
 const ANSI_STRIP = /\x1B\[[0-9;]*[mGKHF]/g
 
 function fmtGiB(bytes: number) { return (bytes / 1073741824).toFixed(2) + ' GiB' }
-function fmtUptime(ms: number) {
-  const s = Math.floor(ms / 1000)
-  const d = Math.floor(s / 86400), h = Math.floor((s % 86400) / 3600), m = Math.floor((s % 3600) / 60)
-  if (d > 0) return `${d}d ${h}h ${m}m`
-  if (h > 0) return `${h}h ${m}m`
-  return `${m}m`
-}
-
-// ── Stat box ──────────────────────────────────────────────────────────────────
-function StatBox({ icon: Icon, label, value, sub }: { icon: React.ElementType; label: string; value: string; sub?: string }) {
-  return (
-    <div className="flex-1 ptero-panel rounded-lg px-5 py-4 flex items-center gap-3 min-w-0">
-      <Icon size={16} className="text-muted shrink-0" />
-      <div className="min-w-0">
-        <p className="text-muted text-xs mb-0.5">{label}</p>
-        <p className="text-white font-semibold text-sm truncate">{value}</p>
-        {sub && <p className="text-muted text-[11px]">{sub}</p>}
-      </div>
-    </div>
-  )
-}
+function fmtMiB(mib: number) { return (mib / 1024).toFixed(2) + ' GiB' }
 
 // ── Startup tab ───────────────────────────────────────────────────────────────
 interface StartupData {
@@ -132,7 +112,7 @@ function StartupTab({ server }: { server: ServerDetail }) {
   if (!data) return null
 
   return (
-    <div className="p-6 space-y-4 max-w-2xl">
+    <div className="p-6 space-y-4 max-w-2xl overflow-y-auto">
       {Object.entries(data.dockerImages).length > 0 && (
         <div className="ptero-panel rounded-xl p-5 space-y-3">
           <p className="text-white font-semibold text-sm">Java Version</p>
@@ -203,7 +183,7 @@ function SettingsTab({ server }: { server: ServerDetail }) {
   })
   if (!sftp) return <div className="p-6 text-muted text-sm">Loading SFTP info…</div>
   return (
-    <div className="p-6 max-w-lg">
+    <div className="p-6 max-w-lg overflow-y-auto">
       <div className="ptero-panel rounded-xl p-5">
         <p className="text-white font-semibold text-sm mb-4">SFTP Connection</p>
         {([['Host', sftp.host], ['Port', String(sftp.port)], ['Username', sftp.username], ['Password', 'Your panel password']] as [string, string][]).map(([label, value]) => (
@@ -224,7 +204,9 @@ function SettingsTab({ server }: { server: ServerDetail }) {
 export default function ServerPage() {
   const { id } = useParams<{ id: string }>()
   const queryClient = useQueryClient()
-  const [tab, setTab] = useState<Tab>('console')
+  const [searchParams, setSearchParams] = useSearchParams()
+  const tab = (searchParams.get('tab') as Tab) ?? 'console'
+
   const [lines, setLines] = useState<string[]>([])
   const [installLines, setInstallLines] = useState<string[]>([])
   const [installDone, setInstallDone] = useState(false)
@@ -311,160 +293,228 @@ export default function ServerPage() {
   )
 
   const displayAddress = `${server.allocationIpAlias ?? server.allocationIp ?? '—'}:${server.allocationPort ?? '—'}`
-  const knownStatus = connected
-  const canStart   = !knownStatus || status === 'offline'
-  const canStop    = !knownStatus || status === 'online' || status === 'starting'
-  const canRestart = !knownStatus || status === 'online'
-  const canKill    = !knownStatus || status === 'online' || status === 'starting' || status === 'stopping'
+  const canStart   = !connected || status === 'offline'
+  const canStop    = !connected || status === 'online' || status === 'starting'
+  const canRestart = !connected || status === 'online'
+  const canKill    = !connected || status === 'online' || status === 'starting' || status === 'stopping'
+
+  const statusLabel = status === 'online' ? 'Online' : status === 'starting' ? 'Starting' : status === 'stopping' ? 'Stopping' : 'Offline'
 
   return (
-    <div className="flex flex-col min-h-full pb-4">
-      {/* ── Back + Server title row ── */}
-      <div className="px-6 pt-5 pb-4">
-        <Link to="/servers" className="inline-flex items-center gap-1 text-muted text-xs hover:text-white transition-colors mb-3">
-          <ChevronLeft size={13} /> Mes serveurs
-        </Link>
+    <div className="h-full flex flex-col">
 
-        <div className="flex items-start justify-between gap-4 flex-wrap">
+      {/* ── Header: back + title + status ── */}
+      <div className="px-6 pt-5 pb-3 shrink-0">
+        <Link to="/servers" className="inline-flex items-center gap-1 text-muted text-xs hover:text-white transition-colors mb-3">
+          <ChevronLeft size={13} /> My Servers
+        </Link>
+        <div className="flex items-center justify-between gap-4 flex-wrap">
           <div>
-            <h1 className="text-white text-2xl font-bold leading-tight">{server.name}</h1>
-            <div className="flex items-center gap-2 mt-1 text-muted text-xs flex-wrap">
+            <h1 className="text-white text-xl font-bold leading-tight">{server.name}</h1>
+            <div className="flex items-center gap-2 mt-0.5 text-muted text-xs flex-wrap">
               <span className="font-mono">{displayAddress}</span>
               {server.nodeName && <><span>·</span><span>{server.nodeName}</span></>}
               {server.eggName && <><span>·</span><span>{server.eggName}</span></>}
             </div>
           </div>
-
-          {/* Online badge */}
           <div className={`flex items-center gap-2 text-sm font-medium ${STATUS_TEXT[status]}`}>
-            <span className={`w-2.5 h-2.5 rounded-full ${STATUS_DOT[status]}`} />
-            {status === 'online' ? 'En ligne' : status === 'starting' ? 'Démarrage' : status === 'stopping' ? 'Arrêt' : 'Hors ligne'}
+            <span className={`w-2 h-2 rounded-full ${STATUS_DOT[status]}`} />
+            {statusLabel}
           </div>
         </div>
       </div>
 
-      {/* ── Stat boxes ── */}
+      {/* ── Large stat numbers ── */}
       {stats && server.installed && (
-        <div className="flex gap-3 px-6 mb-4">
-          <StatBox icon={Cpu} label="CPU" value={`${stats.cpu_absolute.toFixed(1)} %`} sub={`/ ${server.cpu === 0 ? '∞' : server.cpu + '%'}`} />
-          <StatBox icon={MemoryStick} label="RAM" value={fmtGiB(stats.memory_bytes)} sub={`/ ${server.memory === 0 ? '∞' : fmtGiB(server.memory * 1048576)}`} />
-          <StatBox icon={HardDrive} label="Disque" value={fmtGiB(stats.disk_bytes)} sub="/ ∞" />
-          {stats.network && (
-            <StatBox icon={Wifi} label="Réseau T↑" value={`${fmtGiB(stats.network.tx_bytes)} / ${fmtGiB(stats.network.rx_bytes)}`} />
-          )}
-        </div>
-      )}
-
-      {/* ── Tabs ── */}
-      {server.installed && (
-        <div className="flex items-center border-b border-white/[0.08] px-4 overflow-x-auto mb-0">
-          {TABS.map(({ key, label }) => (
-            <button key={key} onClick={() => setTab(key)}
-              className={`px-4 py-2.5 text-sm font-medium whitespace-nowrap border-b-2 transition-colors ${
-                tab === key ? 'text-white border-primary' : 'text-muted border-transparent hover:text-white'
-              }`}>
-              {label}
-            </button>
+        <div className="grid grid-cols-4 gap-3 px-6 mb-3 shrink-0">
+          {[
+            { label: 'CPU',     value: `${stats.cpu_absolute.toFixed(1)}%`,  sub: `/ ${server.cpu === 0 ? '∞' : server.cpu + '%'}` },
+            { label: 'Memory',  value: fmtGiB(stats.memory_bytes),           sub: `/ ${server.memory === 0 ? '∞' : fmtMiB(server.memory)}` },
+            { label: 'Disk',    value: fmtGiB(stats.disk_bytes),             sub: '/ ∞' },
+            ...(stats.network ? [{ label: 'Network', value: fmtGiB(stats.network.tx_bytes), sub: `↑ ${fmtGiB(stats.network.rx_bytes)} ↓` }] : []),
+          ].map(({ label, value, sub }) => (
+            <div key={label} className="ptero-panel rounded-xl px-5 py-4 text-center">
+              <p className="text-white text-2xl font-bold leading-none">{value}</p>
+              <p className="text-muted text-xs mt-1">{sub}</p>
+              <p className="text-gray-500 text-[10px] uppercase tracking-widest mt-2">{label}</p>
+            </div>
           ))}
-          <button className="ml-auto p-2.5 text-muted hover:text-white transition-colors shrink-0">
-            <ExternalLink size={13} />
-          </button>
         </div>
       )}
 
-      {/* ── Content ── */}
-      {!server.installed ? (
-        <div className="mx-6 mt-4 flex flex-col gap-3">
-          <div className={`flex items-center gap-2.5 px-4 py-3 rounded-xl border text-sm font-medium ${
+      {/* ── Install progress (server not yet installed) ── */}
+      {!server.installed && (
+        <div className="mx-6 mt-3 flex flex-col gap-3 flex-1 min-h-0 pb-4">
+          <div className={`shrink-0 flex items-center gap-2.5 px-4 py-3 rounded-xl border text-sm font-medium ${
             installDone ? 'bg-green-950/40 border-green-800 text-green-400' : 'bg-blue-950/40 border-blue-800 text-blue-400'
           }`}>
             {installDone ? <CheckCircle2 size={15} /> : <Loader2 size={15} className="animate-spin" />}
             {installDone ? 'Installation complete — reloading…' : 'Installation in progress…'}
           </div>
-          <div className="ptero-panel rounded-xl overflow-hidden flex flex-col">
-            <div className="flex items-center gap-2 px-4 py-2 border-b border-white/[0.06]">
+          <div className="ptero-panel rounded-xl overflow-hidden flex flex-col flex-1 min-h-0">
+            <div className="flex items-center gap-2 px-4 py-2 border-b border-white/[0.06] shrink-0">
               <span className="text-muted text-xs uppercase tracking-wider font-medium">Install Output</span>
               {!connected && <span className="text-gray-600 text-xs ml-auto flex items-center gap-1"><Loader2 size={10} className="animate-spin" /> Connecting…</span>}
             </div>
-            <div ref={installRef} className="h-80 overflow-y-auto p-4 font-mono text-xs text-green-300 leading-[1.6]">
+            <div ref={installRef} className="flex-1 overflow-y-auto p-4 font-mono text-xs text-green-300 leading-[1.6]">
               {installLines.length === 0
                 ? <span className="text-gray-600">Waiting for install output…</span>
                 : installLines.map((line, i) => <div key={i} className="whitespace-pre-wrap break-all">{line || ' '}</div>)}
             </div>
           </div>
         </div>
-      ) : tab === 'console' ? (
-        <div className="mx-6 mt-4 flex flex-col gap-3">
-          {/* Power buttons */}
-          <div className="flex items-center gap-2 flex-wrap">
-            <button onClick={() => power('start')} disabled={!canStart}
-              className="flex items-center gap-1.5 px-4 py-2 bg-green-600 hover:bg-green-500 disabled:opacity-40 text-white text-sm font-medium rounded-lg transition-colors">
-              <Play size={13} /> Démarrer
-            </button>
-            <button onClick={() => power('restart')} disabled={!canRestart}
-              className="flex items-center gap-1.5 px-4 py-2 bg-primary hover:bg-blue-500 disabled:opacity-40 text-white text-sm font-medium rounded-lg transition-colors">
-              <RotateCcw size={13} /> Redémarrer
-            </button>
-            <button onClick={() => power('stop')} disabled={!canStop}
-              className="flex items-center gap-1.5 px-4 py-2 bg-white/10 hover:bg-white/20 disabled:opacity-40 text-white text-sm font-medium rounded-lg transition-colors">
-              <Square size={13} /> Arrêter
-            </button>
-            <button onClick={() => power('kill')} disabled={!canKill}
-              className="flex items-center gap-1.5 px-4 py-2 bg-danger hover:bg-red-500 disabled:opacity-40 text-white text-sm font-medium rounded-lg transition-colors">
-              <Zap size={13} /> Kill
-            </button>
+      )}
 
-            {wsError ? (
-              <span className="text-red-400 text-xs flex items-center gap-1.5 ml-2">
-                {wsError}
-                <button onClick={() => { setWsError(null); setReconnectTick(t => t + 1) }} className="text-blue-400 hover:underline">Reconnecter</button>
-              </span>
-            ) : !connected ? (
-              <span className="text-muted text-xs flex items-center gap-1.5 ml-2">
-                <Loader2 size={10} className="animate-spin" /> Connexion au daemon…
-              </span>
-            ) : null}
-          </div>
-
-          {/* Console terminal — full width */}
-          <div className="ptero-panel rounded-xl overflow-hidden flex flex-col" style={{ minHeight: '400px' }}>
-            <div
-              ref={consoleRef}
-              className="flex-1 overflow-y-auto p-4 font-mono text-xs text-green-300 leading-[1.6]"
-              style={{ minHeight: '360px' }}
+      {/* ── Tabs row ── */}
+      {server.installed && (
+        <div className="flex items-center border-b border-white/[0.08] px-4 overflow-x-auto shrink-0">
+          {TABS.map(({ key, label }) => (
+            <button
+              key={key}
+              onClick={() => setSearchParams({ tab: key }, { replace: true })}
+              className={`px-4 py-2.5 text-sm font-medium whitespace-nowrap border-b-2 transition-colors ${
+                tab === key ? 'text-white border-primary' : 'text-muted border-transparent hover:text-white'
+              }`}
             >
-              {lines.length === 0
-                ? <span className="text-gray-600">{connected ? 'En attente de sortie console…' : 'Connexion en cours…'}</span>
-                : lines.map((line, i) => <div key={i} className="whitespace-pre-wrap break-all">{line || ' '}</div>)}
-            </div>
-
-            <form onSubmit={sendCommand} className="flex items-center border-t border-white/[0.08] px-3 py-2.5 gap-2">
-              <span className="text-green-600 font-mono text-sm select-none">$</span>
-              <input
-                type="text" value={command}
-                onChange={e => setCommand(e.target.value)}
-                disabled={!connected || status === 'offline'}
-                placeholder={!connected ? 'Connexion…' : status === 'offline' ? 'Serveur hors ligne' : 'Entrer une commande…'}
-                className="flex-1 bg-transparent text-sm font-mono text-white placeholder-gray-600 outline-none disabled:opacity-40"
-              />
-              <button type="submit" disabled={!connected || !command.trim() || status === 'offline'}
-                className="p-1.5 text-muted hover:text-white disabled:opacity-30 transition-colors">
-                <Send size={13} />
-              </button>
-            </form>
-          </div>
-        </div>
-      ) : tab === 'files' ? (
-        <div className="mx-6 mt-4 flex-1"><FileManagerTab serverId={server.id} /></div>
-      ) : tab === 'startup' ? (
-        <StartupTab server={server} />
-      ) : tab === 'settings' ? (
-        <SettingsTab server={server} />
-      ) : (
-        <div className="flex items-center justify-center h-40 text-muted text-sm mx-6 mt-4 ptero-panel rounded-xl">
-          {TABS.find(t => t.key === tab)?.label} — Coming soon
+              {label}
+            </button>
+          ))}
         </div>
       )}
+
+      {/* ── Console tab: 2-column layout ── */}
+      {server.installed && tab === 'console' && (
+        <div className="flex gap-4 px-6 mt-4 flex-1 min-h-0 pb-4">
+
+          {/* Left: server info + limits */}
+          <div className="w-60 shrink-0 flex flex-col gap-3 overflow-y-auto">
+            <div className="ptero-panel rounded-xl p-4">
+              <p className="text-[10px] font-semibold uppercase tracking-widest text-muted/60 mb-3">Information</p>
+              {[
+                ['Address', displayAddress],
+                ['Node', server.nodeName ?? '—'],
+                ['Service', server.eggName ?? '—'],
+              ].map(([label, value]) => (
+                <div key={label} className="py-2 border-b border-white/[0.05] last:border-0">
+                  <p className="text-[10px] text-muted uppercase tracking-wider mb-0.5">{label}</p>
+                  <p className="text-white text-xs font-mono break-all">{value}</p>
+                </div>
+              ))}
+            </div>
+
+            <div className="ptero-panel rounded-xl p-4">
+              <p className="text-[10px] font-semibold uppercase tracking-widest text-muted/60 mb-3">Limits</p>
+              {[
+                ['CPU',    server.cpu    === 0 ? 'Unlimited' : `${server.cpu}%`],
+                ['Memory', server.memory === 0 ? 'Unlimited' : fmtMiB(server.memory)],
+                ['Disk',   server.disk   === 0 ? 'Unlimited' : fmtMiB(server.disk)],
+              ].map(([label, value]) => (
+                <div key={label} className="flex items-center justify-between py-1.5 border-b border-white/[0.05] last:border-0">
+                  <span className="text-[10px] text-muted uppercase tracking-wider">{label}</span>
+                  <span className="text-white text-xs font-mono">{value}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Right: power buttons + console terminal */}
+          <div className="flex-1 flex flex-col gap-3 min-w-0 min-h-0">
+
+            {/* Power actions */}
+            <div className="shrink-0 flex items-center gap-2 flex-wrap">
+              <button onClick={() => power('start')} disabled={!canStart}
+                className="flex items-center gap-1.5 px-4 py-2 bg-green-600 hover:bg-green-500 disabled:opacity-40 text-white text-sm font-medium rounded-lg transition-colors">
+                <Play size={13} /> Start
+              </button>
+              <button onClick={() => power('restart')} disabled={!canRestart}
+                className="flex items-center gap-1.5 px-4 py-2 bg-primary hover:bg-blue-500 disabled:opacity-40 text-white text-sm font-medium rounded-lg transition-colors">
+                <RotateCcw size={13} /> Restart
+              </button>
+              <button onClick={() => power('stop')} disabled={!canStop}
+                className="flex items-center gap-1.5 px-4 py-2 bg-white/10 hover:bg-white/20 disabled:opacity-40 text-white text-sm font-medium rounded-lg transition-colors">
+                <Square size={13} /> Stop
+              </button>
+              <button onClick={() => power('kill')} disabled={!canKill}
+                className="flex items-center gap-1.5 px-4 py-2 bg-danger hover:bg-red-500 disabled:opacity-40 text-white text-sm font-medium rounded-lg transition-colors">
+                <Zap size={13} /> Kill
+              </button>
+
+              {wsError ? (
+                <span className="text-red-400 text-xs flex items-center gap-1.5 ml-2">
+                  {wsError}
+                  <button
+                    onClick={() => { setWsError(null); setReconnectTick(t => t + 1) }}
+                    className="text-blue-400 hover:underline"
+                  >
+                    Reconnect
+                  </button>
+                </span>
+              ) : !connected ? (
+                <span className="text-muted text-xs flex items-center gap-1.5 ml-2">
+                  <Loader2 size={10} className="animate-spin" /> Connecting to daemon…
+                </span>
+              ) : null}
+            </div>
+
+            {/* Console terminal */}
+            <div className="ptero-panel rounded-xl overflow-hidden flex flex-col flex-1 min-h-0">
+              <div
+                ref={consoleRef}
+                className="flex-1 overflow-y-auto p-4 font-mono text-xs text-green-300 leading-[1.6]"
+              >
+                {lines.length === 0
+                  ? <span className="text-gray-600">{connected ? 'Waiting for console output…' : 'Connecting…'}</span>
+                  : lines.map((line, i) => <div key={i} className="whitespace-pre-wrap break-all">{line || ' '}</div>)}
+              </div>
+
+              <form onSubmit={sendCommand} className="flex items-center border-t border-white/[0.08] px-3 py-2.5 gap-2 shrink-0">
+                <span className="text-green-600 font-mono text-sm select-none">&gt;_</span>
+                <input
+                  type="text" value={command}
+                  onChange={e => setCommand(e.target.value)}
+                  disabled={!connected || status === 'offline'}
+                  placeholder={!connected ? 'Connecting…' : status === 'offline' ? 'Server is offline' : 'Type a command…'}
+                  className="flex-1 bg-transparent text-sm font-mono text-white placeholder-gray-600 outline-none disabled:opacity-40"
+                />
+                <button type="submit" disabled={!connected || !command.trim() || status === 'offline'}
+                  className="p-1.5 text-muted hover:text-white disabled:opacity-30 transition-colors">
+                  <Send size={13} />
+                </button>
+              </form>
+            </div>
+
+          </div>
+        </div>
+      )}
+
+      {/* ── Files tab ── */}
+      {server.installed && tab === 'files' && (
+        <div className="mx-6 mt-4 flex-1 min-h-0 pb-4">
+          <FileManagerTab serverId={server.id} />
+        </div>
+      )}
+
+      {/* ── Startup tab ── */}
+      {server.installed && tab === 'startup' && (
+        <div className="flex-1 overflow-y-auto">
+          <StartupTab server={server} />
+        </div>
+      )}
+
+      {/* ── Settings tab ── */}
+      {server.installed && tab === 'settings' && (
+        <div className="flex-1 overflow-y-auto">
+          <SettingsTab server={server} />
+        </div>
+      )}
+
+      {/* ── Coming soon tabs ── */}
+      {server.installed && !['console', 'files', 'startup', 'settings'].includes(tab) && (
+        <div className="flex items-center justify-center mx-6 mt-4 ptero-panel rounded-xl shrink-0" style={{ height: '160px' }}>
+          <p className="text-muted text-sm">{TABS.find(t => t.key === tab)?.label} — Coming soon</p>
+        </div>
+      )}
+
     </div>
   )
 }

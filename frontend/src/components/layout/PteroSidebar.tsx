@@ -1,18 +1,37 @@
-import { NavLink, useNavigate, useLocation } from 'react-router-dom'
-import { User, Layers, Settings, LogOut, Moon } from 'lucide-react'
+import { NavLink, useNavigate, useLocation, useSearchParams } from 'react-router-dom'
+import {
+  User, Layers, Settings, LogOut, Moon,
+  Terminal, Folder, Database, Calendar, Users, Archive, Globe, Rocket, Activity,
+} from 'lucide-react'
 import { useAuth } from '../../hooks/useAuth'
 
-const clientLinks = [
-  { to: '/account', icon: User,   label: 'Account',  end: true },
-  { to: '/servers', icon: Layers, label: 'Servers',  end: true },
+const CLIENT_LINKS = [
+  { to: '/account', icon: User,   label: 'Account', end: true },
+  { to: '/servers', icon: Layers, label: 'Servers', end: true },
+]
+
+const SERVER_TABS = [
+  { key: 'console',   label: 'Console',       icon: Terminal },
+  { key: 'files',     label: 'File managers', icon: Folder },
+  { key: 'databases', label: 'Databases',     icon: Database },
+  { key: 'schedules', label: 'Schedules',     icon: Calendar },
+  { key: 'users',     label: 'Users',         icon: Users },
+  { key: 'backups',   label: 'Backups',       icon: Archive },
+  { key: 'network',   label: 'Network',       icon: Globe },
+  { key: 'startup',   label: 'Startup',       icon: Rocket },
+  { key: 'settings',  label: 'Settings',      icon: Settings },
+  { key: 'activity',  label: 'Activity',      icon: Activity },
 ]
 
 export default function PteroSidebar() {
   const { logout, isAdmin } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
+  const [searchParams, setSearchParams] = useSearchParams()
 
-  const isServerPage = /^\/servers\/[^/]+/.test(location.pathname)
+  const serverMatch = location.pathname.match(/^\/servers\/([^/]+)/)
+  const serverId = serverMatch?.[1] ?? null
+  const activeTab = searchParams.get('tab') ?? 'console'
 
   async function handleLogout() {
     await logout()
@@ -31,16 +50,16 @@ export default function PteroSidebar() {
 
       {/* Nav */}
       <nav className="flex-1 overflow-y-auto py-3">
-        {clientLinks.map(({ to, icon: Icon, label, end }) => (
+        {CLIENT_LINKS.map(({ to, icon: Icon, label, end }) => (
           <NavLink
             key={to}
             to={to}
             end={end}
             className={({ isActive }) =>
-              `flex items-center gap-3 px-5 py-2.5 text-sm transition-colors ${
+              `flex items-center gap-3 px-5 py-2.5 text-sm transition-colors border-l-2 ${
                 isActive
-                  ? 'text-white bg-white/5 border-l-2 border-primary'
-                  : 'text-muted hover:text-white hover:bg-white/5 border-l-2 border-transparent'
+                  ? 'text-white bg-white/5 border-primary'
+                  : 'text-muted hover:text-white hover:bg-white/5 border-transparent'
               }`
             }
           >
@@ -49,12 +68,29 @@ export default function PteroSidebar() {
           </NavLink>
         ))}
 
-        {/* Server controls section — shown when inside a server page */}
-        {isServerPage && (
-          <div className="mt-4 px-5 mb-2">
-            <p className="text-[10px] font-semibold uppercase tracking-widest text-muted/60 mb-2">
+        {/* Server controls — shown when inside a server page */}
+        {serverId && (
+          <div className="mt-4 border-t border-border/40 pt-3">
+            <p className="text-[10px] font-semibold uppercase tracking-widest text-muted/60 mb-1 px-5">
               Server Controls
             </p>
+            {SERVER_TABS.map(({ key, label, icon: Icon }) => {
+              const isActive = activeTab === key
+              return (
+                <button
+                  key={key}
+                  onClick={() => setSearchParams({ tab: key }, { replace: true })}
+                  className={`w-full flex items-center gap-3 px-5 py-2 text-sm transition-colors border-l-2 ${
+                    isActive
+                      ? 'text-white bg-white/5 border-primary'
+                      : 'text-muted hover:text-white hover:bg-white/5 border-transparent'
+                  }`}
+                >
+                  <Icon size={14} className="shrink-0" />
+                  {label}
+                </button>
+              )
+            })}
           </div>
         )}
 

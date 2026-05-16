@@ -17,7 +17,7 @@ export default function MainLayout() {
         }}
       >
         {/* Overlay on content only, not sidebar */}
-        <div className="absolute inset-0 bg-black/55 z-0" />
+        <div className="absolute inset-0 bg-black/20 z-0" />
 
         <main className="relative z-10 h-full overflow-y-auto">
           <Outlet />

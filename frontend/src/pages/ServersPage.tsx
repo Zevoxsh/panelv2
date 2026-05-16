@@ -113,7 +113,7 @@ export default function ServersPage() {
         {/* Header */}
         <div className="grid grid-cols-[120px_1fr_220px_120px_140px_140px_100px] px-6 py-3 border-b border-white/[0.06]">
           {['ID', 'Name', 'Allocation', 'CPU', 'Ram', 'Disk', 'Status'].map(h => (
-            <span key={h} className="text-blue-400 text-sm font-medium">{h}</span>
+            <span key={h} className="text-gray-400 text-xs font-medium uppercase tracking-wider">{h}</span>
           ))}
         </div>
 
