@@ -19,7 +19,7 @@ export default function MainLayout() {
         {/* Blue-black tinted overlay — richer than pure black */}
         <div className="absolute inset-0 z-0" style={{ background: 'rgba(3,7,20,0.78)' }} />
 
-        <main className="relative z-10 h-full overflow-y-auto">
+        <main className="relative h-full overflow-y-auto">
           <Outlet />
         </main>
       </div>

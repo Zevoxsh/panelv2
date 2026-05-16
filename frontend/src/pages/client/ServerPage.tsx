@@ -6,6 +6,7 @@ import { ansiToHtml } from '../../lib/ansi'
 import {
   ChevronLeft, Play, RotateCcw, Square, Zap,
   Send, Loader2, CheckCircle2, Cpu, MemoryStick, HardDrive, Wifi,
+  ShieldAlert, ExternalLink,
 } from 'lucide-react'
 import FileManagerTab from './FileManagerTab'
 import DatabasesTab from './DatabasesTab'
@@ -456,34 +457,102 @@ export default function ServerPage() {
 
       {/* ── EULA modal ── */}
       {eulaRequired && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(8px)' }}>
-          <div className="panel rounded-2xl p-8 max-w-md w-full shadow-2xl border border-yellow-500/20 animate-fade-in">
-            <div className="w-12 h-12 rounded-xl bg-yellow-500/[0.12] border border-yellow-500/25 flex items-center justify-center mx-auto mb-5">
-              <span className="text-yellow-400 text-2xl">⚠</span>
-            </div>
-            <h2 className="text-white text-lg font-bold text-center mb-2">Minecraft EULA Required</h2>
-            <p className="text-slate-400 text-sm text-center leading-relaxed mb-6">
-              To run this server you must agree to Mojang's End User License Agreement.
-              By clicking <span className="text-white font-medium">Accept &amp; Start</span> you confirm you have read and accept the{' '}
-              <a href="https://aka.ms/MinecraftEULA" target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:underline">Minecraft EULA</a>.
-            </p>
-            <div className="bg-black/30 rounded-lg px-4 py-3 mb-6 font-mono text-xs text-yellow-300 border border-yellow-500/10">
-              You need to agree to the EULA in order to run the server. Go to eula.txt for more info.
-            </div>
-            <div className="flex gap-3">
-              <button
-                onClick={() => setEulaRequired(false)}
-                className="flex-1 py-2.5 rounded-xl border border-white/[0.08] text-slate-400 hover:text-slate-200 hover:bg-white/[0.05] text-sm font-medium transition-all"
-              >
-                Dismiss
-              </button>
-              <button
-                onClick={acceptEula}
-                disabled={eulaAccepting}
-                className="flex-1 py-2.5 rounded-xl bg-yellow-500 hover:bg-yellow-400 disabled:opacity-50 text-black font-bold text-sm transition-all"
-              >
-                {eulaAccepting ? 'Accepting…' : 'Accept & Start'}
-              </button>
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          style={{ background: 'rgba(0,4,15,0.82)', backdropFilter: 'blur(20px)' }}
+        >
+          {/* Glow behind the card */}
+          <div className="absolute w-[420px] h-[320px] rounded-full opacity-20 pointer-events-none"
+            style={{ background: 'radial-gradient(ellipse, #f59e0b 0%, transparent 70%)' }} />
+
+          <div
+            className="relative max-w-md w-full rounded-2xl overflow-hidden"
+            style={{
+              background: 'linear-gradient(145deg, rgba(30,25,10,0.85) 0%, rgba(10,8,4,0.90) 100%)',
+              border: '1px solid rgba(245,158,11,0.22)',
+              boxShadow: '0 0 0 1px rgba(245,158,11,0.06) inset, 0 32px 80px -12px rgba(0,0,0,0.8), 0 0 60px -20px rgba(245,158,11,0.18)',
+              backdropFilter: 'blur(32px)',
+            }}
+          >
+            {/* Subtle top shimmer */}
+            <div className="absolute inset-x-0 top-0 h-px"
+              style={{ background: 'linear-gradient(90deg, transparent, rgba(245,158,11,0.4), transparent)' }} />
+
+            <div className="px-8 pt-8 pb-7">
+              {/* Icon */}
+              <div className="mx-auto mb-5 w-14 h-14 rounded-2xl flex items-center justify-center"
+                style={{
+                  background: 'linear-gradient(135deg, rgba(245,158,11,0.18) 0%, rgba(245,158,11,0.06) 100%)',
+                  border: '1px solid rgba(245,158,11,0.28)',
+                  boxShadow: '0 0 24px -6px rgba(245,158,11,0.4)',
+                }}>
+                <ShieldAlert size={26} className="text-yellow-400" strokeWidth={1.75} />
+              </div>
+
+              {/* Heading */}
+              <h2 className="text-white text-lg font-bold text-center mb-1 tracking-tight">
+                EULA Agreement Required
+              </h2>
+              <p className="text-slate-500 text-[13px] text-center mb-5">
+                Minecraft — Mojang End User License Agreement
+              </p>
+
+              {/* Console excerpt */}
+              <div className="rounded-xl px-4 py-3 mb-5 flex items-start gap-3"
+                style={{
+                  background: 'rgba(0,0,0,0.45)',
+                  border: '1px solid rgba(245,158,11,0.12)',
+                }}>
+                <span className="text-yellow-600 font-mono text-xs mt-px shrink-0">!</span>
+                <p className="font-mono text-xs text-yellow-200/70 leading-relaxed">
+                  You need to agree to the EULA in order to run the server.
+                  Go to eula.txt for more info.
+                </p>
+              </div>
+
+              {/* Body text */}
+              <p className="text-slate-400 text-[13px] leading-relaxed text-center mb-7">
+                By clicking <span className="text-white font-semibold">Accept &amp; Start</span> you confirm
+                you have read and accept the{' '}
+                <a
+                  href="https://aka.ms/MinecraftEULA"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-0.5 text-amber-400 hover:text-amber-300 transition-colors"
+                >
+                  Minecraft EULA <ExternalLink size={11} className="mb-px" />
+                </a>
+                .
+              </p>
+
+              {/* Actions */}
+              <div className="flex gap-2.5">
+                <button
+                  onClick={() => setEulaRequired(false)}
+                  className="flex-1 py-2.5 rounded-xl text-sm font-medium text-slate-400 hover:text-slate-200 transition-all"
+                  style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)' }}
+                >
+                  Dismiss
+                </button>
+                <button
+                  onClick={acceptEula}
+                  disabled={eulaAccepting}
+                  className="flex-1 py-2.5 rounded-xl text-sm font-bold transition-all disabled:opacity-50"
+                  style={{
+                    background: eulaAccepting
+                      ? 'rgba(180,120,0,0.5)'
+                      : 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
+                    color: '#0a0600',
+                    boxShadow: eulaAccepting ? 'none' : '0 4px 20px -4px rgba(245,158,11,0.5)',
+                  }}
+                >
+                  {eulaAccepting ? (
+                    <span className="flex items-center justify-center gap-2">
+                      <Loader2 size={14} className="animate-spin" /> Accepting…
+                    </span>
+                  ) : 'Accept & Start'}
+                </button>
+              </div>
             </div>
           </div>
         </div>
