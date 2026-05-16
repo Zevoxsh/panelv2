@@ -147,15 +147,20 @@ function StartupTab({ server }: { server: ServerDetail }) {
     } catch (e: any) { setImgError(e.message) }
   }
 
-  if (isLoading) return <p className="text-slate-500 text-sm p-6">Loading…</p>
+  if (isLoading) return (
+    <div className="flex-1 flex items-center justify-center">
+      <p className="text-slate-500 text-sm">Loading…</p>
+    </div>
+  )
   if (!data) return null
 
   return (
-    <div className="p-6 space-y-4 max-w-2xl">
+    <div className="flex-1 overflow-y-auto px-6 py-6 space-y-4">
+      {/* Docker image selector */}
       {Object.entries(data.dockerImages).length > 0 && (
         <div className="panel rounded-xl p-5 space-y-3">
           <p className="text-white font-semibold text-sm">Docker Image</p>
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2">
             {Object.entries(data.dockerImages).map(([label, image]) => (
               <button key={image} onClick={() => setSelectedImage(image)}
                 className={`flex items-center gap-2 px-3 py-2.5 rounded-lg border text-sm font-medium transition-all text-left ${
@@ -164,18 +169,19 @@ function StartupTab({ server }: { server: ServerDetail }) {
                     : 'border-white/[0.07] text-slate-400 hover:text-slate-200 hover:bg-white/[0.05]'
                 }`}>
                 <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${selectedImage === image ? 'bg-blue-400' : 'bg-slate-600'}`} />
-                {label}
+                <span className="truncate">{label}</span>
               </button>
             ))}
           </div>
           {imgError && <p className="text-red-400 text-xs">{imgError}</p>}
           <button onClick={saveDockerImage} disabled={selectedImage === data.dockerImage}
-            className="px-4 py-2 text-sm font-medium rounded-lg border border-white/[0.08] text-slate-400 hover:text-slate-200 hover:bg-white/[0.05] disabled:opacity-40 transition-all">
+            className="px-4 py-2 text-sm font-medium rounded-lg bg-blue-600 hover:bg-blue-500 disabled:opacity-40 text-white transition-all">
             {imgSaved ? 'Saved ✓' : 'Apply Image'}
           </button>
         </div>
       )}
 
+      {/* Startup command preview */}
       <div className="panel rounded-xl p-5">
         <p className="text-white font-semibold text-sm mb-3">Startup Command</p>
         <pre className="bg-black/40 rounded-lg px-4 py-3 text-emerald-300 text-xs font-mono overflow-x-auto leading-relaxed whitespace-pre-wrap break-all">
@@ -183,61 +189,133 @@ function StartupTab({ server }: { server: ServerDetail }) {
         </pre>
       </div>
 
+      {/* Variables — 2-col grid on wide screens */}
       {data.variables.length > 0 && (
-        <div className="panel rounded-xl p-5 space-y-4">
-          <p className="text-white font-semibold text-sm">Variables</p>
-          {data.variables.map(v => (
-            <div key={v.id}>
-              <label className="block text-[11px] text-slate-500 mb-1.5 uppercase tracking-wider">
-                {v.name ?? v.envVariable}
-                {!v.userEditable && <span className="ml-2 text-slate-700 normal-case">(read-only)</span>}
-              </label>
-              <div className="flex gap-2">
-                <input value={values[v.id] ?? v.value}
-                  onChange={e => { if (!v.userEditable) return; setValues(s => ({ ...s, [v.id]: e.target.value })); setErrors(s => ({ ...s, [v.id]: '' })) }}
-                  readOnly={!v.userEditable}
-                  className="flex-1 bg-black/30 border border-white/[0.08] rounded-lg px-3 py-2 text-slate-200 text-sm focus:outline-none focus:border-blue-500/50 transition-colors" />
-                {v.userEditable && (
-                  <button onClick={() => saveVar(v.id)}
-                    className={`px-3 py-2 text-xs font-medium rounded-lg border transition-all whitespace-nowrap ${
-                      saved[v.id]
-                        ? 'border-green-700 text-green-400 bg-green-950/40'
-                        : 'border-white/[0.08] text-slate-400 hover:text-slate-200 hover:bg-white/[0.05]'
-                    }`}>
-                    {saved[v.id] ? 'Saved ✓' : 'Save'}
-                  </button>
-                )}
+        <div className="panel rounded-xl p-5">
+          <p className="text-white font-semibold text-sm mb-4">Variables</p>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            {data.variables.map(v => (
+              <div key={v.id}>
+                <label className="block text-[11px] text-slate-500 mb-1.5 uppercase tracking-wider">
+                  {v.name ?? v.envVariable}
+                  {!v.userEditable && <span className="ml-2 text-slate-700 normal-case">(read-only)</span>}
+                </label>
+                <div className="flex gap-2">
+                  <input
+                    value={values[v.id] ?? v.value}
+                    onChange={e => { if (!v.userEditable) return; setValues(s => ({ ...s, [v.id]: e.target.value })); setErrors(s => ({ ...s, [v.id]: '' })) }}
+                    readOnly={!v.userEditable}
+                    className="flex-1 bg-black/30 border border-white/[0.08] rounded-lg px-3 py-2 text-slate-200 text-sm focus:outline-none focus:border-blue-500/50 transition-colors"
+                  />
+                  {v.userEditable && (
+                    <button onClick={() => saveVar(v.id)}
+                      className={`px-3 py-2 text-xs font-medium rounded-lg border transition-all whitespace-nowrap ${
+                        saved[v.id]
+                          ? 'border-green-700 text-green-400 bg-green-950/40'
+                          : 'border-white/[0.08] text-slate-400 hover:text-slate-200 hover:bg-white/[0.05]'
+                      }`}>
+                      {saved[v.id] ? 'Saved ✓' : 'Save'}
+                    </button>
+                  )}
+                </div>
+                {v.description && <p className="text-slate-600 text-xs mt-1">{v.description}</p>}
+                {errors[v.id] && <p className="text-red-400 text-xs mt-1">{errors[v.id]}</p>}
               </div>
-              {v.description && <p className="text-slate-600 text-xs mt-1">{v.description}</p>}
-              {errors[v.id] && <p className="text-red-400 text-xs mt-1">{errors[v.id]}</p>}
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
       )}
     </div>
   )
 }
 
-// ── Settings (SFTP) tab ────────────────────────────────────────────────────────
+// ── Settings tab ──────────────────────────────────────────────────────────────
 function SettingsTab({ server }: { server: ServerDetail }) {
+  const [name, setName] = useState(server.name)
+  const [nameSaved, setNameSaved] = useState(false)
+  const [nameError, setNameError] = useState('')
+  const queryClient = useQueryClient()
+
   const { data: sftp } = useQuery<{ host: string; port: number; username: string }>({
     queryKey: ['client', 'servers', server.id, 'sftp'],
     queryFn: () => api.get(`/client/servers/${server.id}/sftp`),
   })
-  if (!sftp) return <div className="p-6 text-slate-500 text-sm">Loading…</div>
+
+  async function saveName() {
+    setNameError('')
+    try {
+      await api.patch(`/client/servers/${server.id}/name`, { name })
+      setNameSaved(true)
+      setTimeout(() => setNameSaved(false), 2000)
+      queryClient.invalidateQueries({ queryKey: ['client', 'servers', server.id] })
+    } catch (e: any) { setNameError(e.message) }
+  }
+
   return (
-    <div className="p-6 max-w-lg">
-      <div className="panel rounded-xl p-5">
-        <p className="text-white font-semibold text-sm mb-4">SFTP Details</p>
-        {([['Host', sftp.host], ['Port', String(sftp.port)], ['Username', sftp.username], ['Password', 'Your panel password']] as [string, string][]).map(([label, value]) => (
-          <div key={label} className="flex items-center justify-between py-2.5 border-b border-white/[0.05] last:border-0">
-            <span className="text-slate-500 text-sm">{label}</span>
-            <span className="font-mono text-slate-200 text-sm">{value}</span>
+    <div className="flex-1 overflow-y-auto px-6 py-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+
+        {/* Rename server */}
+        <div className="panel rounded-xl p-5 space-y-3">
+          <p className="text-white font-semibold text-sm">Server Name</p>
+          <p className="text-slate-500 text-xs">Rename this server — cosmetic only, does not affect the container.</p>
+          <div className="flex gap-2">
+            <input
+              value={name}
+              onChange={e => { setName(e.target.value); setNameError('') }}
+              className="flex-1 bg-black/30 border border-white/[0.08] rounded-lg px-3 py-2 text-slate-200 text-sm focus:outline-none focus:border-blue-500/50 transition-colors"
+            />
+            <button
+              onClick={saveName}
+              disabled={!name.trim() || name === server.name}
+              className={`px-4 py-2 text-sm font-medium rounded-lg border transition-all whitespace-nowrap ${
+                nameSaved
+                  ? 'border-green-700 text-green-400 bg-green-950/40'
+                  : 'border-white/[0.08] text-slate-400 hover:text-slate-200 hover:bg-white/[0.05] disabled:opacity-40'
+              }`}
+            >
+              {nameSaved ? 'Saved ✓' : 'Rename'}
+            </button>
           </div>
-        ))}
-        <pre className="mt-4 bg-black/40 rounded-lg px-4 py-3 text-emerald-300 text-xs font-mono overflow-x-auto">
-          {`sftp -P ${sftp.port} ${sftp.username}@${sftp.host}`}
-        </pre>
+          {nameError && <p className="text-red-400 text-xs">{nameError}</p>}
+        </div>
+
+        {/* SFTP details */}
+        <div className="panel rounded-xl p-5 space-y-3">
+          <p className="text-white font-semibold text-sm">SFTP Details</p>
+          {!sftp ? (
+            <p className="text-slate-500 text-sm">Loading…</p>
+          ) : (
+            <>
+              {([['Host', sftp.host], ['Port', String(sftp.port)], ['Username', sftp.username], ['Password', 'Your panel password']] as [string, string][]).map(([label, value]) => (
+                <div key={label} className="flex items-center justify-between py-2 border-b border-white/[0.05] last:border-0">
+                  <span className="text-slate-500 text-sm">{label}</span>
+                  <span className="font-mono text-slate-200 text-sm">{value}</span>
+                </div>
+              ))}
+              <pre className="bg-black/40 rounded-lg px-4 py-3 text-emerald-300 text-xs font-mono overflow-x-auto">
+                {`sftp -P ${sftp.port} ${sftp.username}@${sftp.host}`}
+              </pre>
+            </>
+          )}
+        </div>
+
+        {/* Debug info */}
+        <div className="panel rounded-xl p-5 space-y-2">
+          <p className="text-white font-semibold text-sm">Server Information</p>
+          {([
+            ['Server ID', server.id],
+            ['Node',      server.nodeName ?? '—'],
+            ['Image',     server.eggName  ?? '—'],
+            ['Address',   `${server.allocationIpAlias ?? server.allocationIp ?? '—'}:${server.allocationPort ?? '—'}`],
+          ] as [string, string][]).map(([label, value]) => (
+            <div key={label} className="flex items-center justify-between py-1.5 border-b border-white/[0.05] last:border-0">
+              <span className="text-slate-500 text-sm">{label}</span>
+              <span className="font-mono text-slate-300 text-xs truncate ml-4 max-w-[60%] text-right">{value}</span>
+            </div>
+          ))}
+        </div>
+
       </div>
     </div>
   )
@@ -617,14 +695,14 @@ export default function ServerPage() {
 
       {/* ══ STARTUP TAB ══════════════════════════════════════════════════════ */}
       {server.installed && tab === 'startup' && (
-        <div className="flex-1 min-h-0 overflow-y-auto">
+        <div className="flex-1 min-h-0 flex flex-col">
           <StartupTab server={server} />
         </div>
       )}
 
       {/* ══ SETTINGS TAB ═════════════════════════════════════════════════════ */}
       {server.installed && tab === 'settings' && (
-        <div className="flex-1 min-h-0 overflow-y-auto">
+        <div className="flex-1 min-h-0 flex flex-col">
           <SettingsTab server={server} />
         </div>
       )}
