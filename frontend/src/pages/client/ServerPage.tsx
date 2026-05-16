@@ -15,6 +15,8 @@ import SchedulesTab from './SchedulesTab'
 import SubUsersTab from './SubUsersTab'
 import NetworkTab from './NetworkTab'
 import ActivityTab from './ActivityTab'
+import PlayersTab from './PlayersTab'
+import PluginsTab from './PluginsTab'
 
 interface ServerDetail {
   id: string; name: string; description: string | null
@@ -35,8 +37,9 @@ type ServerStatus = 'offline' | 'online' | 'starting' | 'stopping'
 type Tab =
   | 'console' | 'files' | 'databases' | 'schedules'
   | 'users' | 'backups' | 'network' | 'startup' | 'settings' | 'activity'
+  | 'players' | 'plugins' | 'mods'
 
-const TABS: { key: Tab; label: string }[] = [
+const BASE_TABS: { key: Tab; label: string }[] = [
   { key: 'console',   label: 'Console' },
   { key: 'files',     label: 'Files' },
   { key: 'databases', label: 'Databases' },
@@ -48,6 +51,15 @@ const TABS: { key: Tab; label: string }[] = [
   { key: 'settings',  label: 'Settings' },
   { key: 'activity',  label: 'Activity' },
 ]
+
+function detectMcType(eggName: string | null) {
+  const n = (eggName ?? '').toLowerCase()
+  return {
+    isMc:     /paper|spigot|bukkit|purpur|waterfall|forge|fabric|sponge|neoforge|vanilla|minecraft/.test(n),
+    isPlugin: /paper|spigot|bukkit|purpur|waterfall/.test(n),
+    isMod:    /forge|fabric|sponge|neoforge/.test(n),
+  }
+}
 
 const STATUS_CFG: Record<ServerStatus, { dot: string; badge: string; label: string }> = {
   online:   { dot: 'bg-green-400 pulse-dot', badge: 'bg-green-500/[0.12] text-green-400 border-green-500/25', label: 'Online' },
@@ -447,6 +459,24 @@ export default function ServerPage() {
 
   const displayAddress = `${server.allocationIpAlias ?? server.allocationIp ?? '—'}:${server.allocationPort ?? '—'}`
   const cfg = STATUS_CFG[status]
+  const mcType = detectMcType(server.eggName)
+  const visibleTabs: { key: Tab; label: string }[] = [
+    ...BASE_TABS,
+    ...(mcType.isMc     ? [{ key: 'players' as Tab, label: 'Players' }]        : []),
+    ...(mcType.isPlugin ? [{ key: 'plugins' as Tab, label: 'Plugins' }]        : []),
+    ...(mcType.isMod    ? [{ key: 'mods'    as Tab, label: 'Mods' }]           : []),
+  ]
+  const pluginLoader = mcType.isPlugin
+    ? /paper|purpur/.test((server.eggName ?? '').toLowerCase()) ? 'paper' : 'spigot'
+    : /fabric/.test((server.eggName ?? '').toLowerCase()) ? 'fabric'
+    : /forge/.test((server.eggName ?? '').toLowerCase()) ? 'forge'
+    : /sponge/.test((server.eggName ?? '').toLowerCase()) ? 'sponge'
+    : undefined
+
+  function sendCommandStr(cmd: string) {
+    if (!wsRef.current || !connected) return
+    wsRef.current.send(JSON.stringify({ event: 'send command', args: [cmd] }))
+  }
   const isRunning = status === 'online' || status === 'starting'
 
   // Compute stat percentages
@@ -651,7 +681,7 @@ export default function ServerPage() {
       {/* ── Tab bar ── */}
       {server.installed && (
         <div className="flex items-center border-b border-white/[0.06] px-4 overflow-x-auto shrink-0">
-          {TABS.map(({ key, label }) => (
+          {visibleTabs.map(({ key, label }) => (
             <button
               key={key}
               onClick={() => setSearchParams({ tab: key }, { replace: true })}
@@ -882,6 +912,43 @@ export default function ServerPage() {
       {server.installed && tab === 'activity' && (
         <div className="flex-1 min-h-0 flex flex-col">
           <ActivityTab serverId={server.id} />
+        </div>
+      )}
+
+      {/* ══ PLAYERS TAB ══════════════════════════════════════════════════════ */}
+      {server.installed && tab === 'players' && mcType.isMc && (
+        <div className="flex-1 min-h-0 flex flex-col">
+          <PlayersTab
+            serverId={server.id}
+            lines={lines}
+            onSendCommand={sendCommandStr}
+            connected={connected}
+            status={status}
+          />
+        </div>
+      )}
+
+      {/* ══ PLUGINS TAB ══════════════════════════════════════════════════════ */}
+      {server.installed && tab === 'plugins' && mcType.isPlugin && (
+        <div className="flex-1 min-h-0 flex flex-col">
+          <PluginsTab
+            serverId={server.id}
+            folder="plugins"
+            sources={['spiget', 'modrinth']}
+            loader={pluginLoader}
+          />
+        </div>
+      )}
+
+      {/* ══ MODS TAB ═════════════════════════════════════════════════════════ */}
+      {server.installed && tab === 'mods' && mcType.isMod && (
+        <div className="flex-1 min-h-0 flex flex-col">
+          <PluginsTab
+            serverId={server.id}
+            folder="mods"
+            sources={['modrinth']}
+            loader={pluginLoader}
+          />
         </div>
       )}
 

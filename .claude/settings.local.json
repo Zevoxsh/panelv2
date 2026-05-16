@@ -96,7 +96,10 @@
       "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\Administrator\\\\Documents\\\\panel\" -Directory)",
       "Bash(Select-Object Name)",
       "Bash(Get-ChildItem -Recurse -Depth 2 -Path .\\\\src -ErrorAction SilentlyContinue)",
-      "Bash(Select-Object FullName)"
+      "Bash(Select-Object FullName)",
+      "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\Administrator\\\\Documents\\\\panel\\\\frontend\" -Recurse -Filter \"*.routes.ts\")",
+      "Bash(Select-Object -First 20)",
+      "Bash(cmd *)"
     ]
   }
 }
