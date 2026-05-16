@@ -208,16 +208,30 @@ export async function serversPluginsRoutes(app: FastifyInstance) {
 
       if (body.source === 'spiget') {
         if (!body.resourceId) return reply.code(400).send({ error: 'resourceId required' })
-        downloadUrl = `https://api.spiget.org/v2/resources/${body.resourceId}/download`
-        fileName = `spiget-${body.resourceId}.jar`
 
-        // Try to get the actual filename from resource info
-        try {
-          const info = await fetchJson<{ name: string }>(
-            `https://api.spiget.org/v2/resources/${body.resourceId}`,
-          )
-          if (info?.name) fileName = `${info.name.replace(/[^a-zA-Z0-9._-]/g, '_')}.jar`
-        } catch {}
+        type SpigetResource = {
+          name: string
+          premium: boolean
+          file: { type: string; externalUrl?: string }
+        }
+        const info = await fetchJson<SpigetResource>(
+          `https://api.spiget.org/v2/resources/${body.resourceId}`,
+        )
+        if (info.premium) {
+          return reply.code(422).send({ error: 'This is a premium plugin — purchase it on SpigotMC then upload the JAR manually.' })
+        }
+        if (info.file?.type === 'external') {
+          const ext = info.file.externalUrl ?? ''
+          if (!ext.endsWith('.jar')) {
+            return reply.code(422).send({ error: 'This plugin is hosted externally (e.g. GitHub) — download the JAR from the releases page and upload it manually.' })
+          }
+          downloadUrl = ext
+        } else {
+          downloadUrl = `https://api.spiget.org/v2/resources/${body.resourceId}/download`
+        }
+        fileName = info.name
+          ? `${info.name.replace(/[^a-zA-Z0-9._-]/g, '_')}.jar`
+          : `spiget-${body.resourceId}.jar`
 
       } else if (body.source === 'modrinth') {
         if (!body.projectId) return reply.code(400).send({ error: 'projectId required' })
@@ -228,7 +242,7 @@ export async function serversPluginsRoutes(app: FastifyInstance) {
           `https://api.modrinth.com/v2/project/${body.projectId}/version?limit=5${loaderParam}`,
         )
         const latest = Array.isArray(versions) ? versions[0] : null
-        if (!latest?.files?.length) return reply.code(404).send({ error: 'No downloadable version found' })
+        if (!latest?.files?.length) return reply.code(404).send({ error: 'No downloadable version found for this loader/version.' })
         const file = latest.files.find(f => f.primary) ?? latest.files[0]
         downloadUrl = file.url
         fileName = file.filename
@@ -238,6 +252,12 @@ export async function serversPluginsRoutes(app: FastifyInstance) {
       }
 
       const fileData = await downloadBuffer(downloadUrl)
+
+      // Validate the downloaded file is a JAR (ZIP magic bytes: PK\x03\x04)
+      if (fileData.length < 4 || fileData[0] !== 0x50 || fileData[1] !== 0x4B) {
+        return reply.code(422).send({ error: 'Downloaded file is not a valid JAR. The plugin may require a direct download — upload it manually via the Files tab.' })
+      }
+
       const targetPath = `/${body.folder}/${fileName}`
       await writeBinaryToWings(ctx.node, id, targetPath, fileData)
 

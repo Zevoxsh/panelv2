@@ -102,7 +102,7 @@ function PluginCard({
       </div>
 
       {state === 'error' && errMsg && (
-        <p className="text-red-400 text-[11px] truncate">{errMsg}</p>
+        <p className="text-red-400 text-[11px] leading-relaxed">{errMsg}</p>
       )}
     </div>
   )
