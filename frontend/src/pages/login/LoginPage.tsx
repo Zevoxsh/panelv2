@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuthStore } from '../../stores/auth.store'
+import { Layers, Loader2 } from 'lucide-react'
 
 export default function LoginPage() {
   const navigate = useNavigate()
@@ -37,23 +38,35 @@ export default function LoginPage() {
         backgroundPosition: 'center',
       }}
     >
-      <div className="absolute inset-0 bg-black/60" />
+      {/* Deep tinted overlay */}
+      <div className="absolute inset-0" style={{ background: 'rgba(2,5,16,0.82)' }} />
 
-      <div className="relative z-10 w-full max-w-sm mx-4">
+      <div className="relative z-10 w-full max-w-sm mx-4 animate-fade-in">
+
         {/* Logo */}
         <div className="flex flex-col items-center mb-8">
-          <div className="w-12 h-12 bg-primary rounded-xl flex items-center justify-center mb-4">
-            <span className="text-white text-xl font-bold">P</span>
+          <div
+            className="w-14 h-14 rounded-2xl flex items-center justify-center mb-5 shadow-glow"
+            style={{ background: 'linear-gradient(135deg, #3b82f6, #06b6d4)' }}
+          >
+            <Layers size={24} className="text-white" />
           </div>
-          <h1 className="text-white text-xl font-semibold">Pterodactyl</h1>
-          <p className="text-muted text-sm mt-1">Game Server Management Panel</p>
+          <h1 className="text-white text-2xl font-bold tracking-tight">GamePanel</h1>
+          <p className="text-slate-500 text-sm mt-1">Sign in to manage your servers</p>
         </div>
 
-        {/* Form */}
-        <div className="ptero-panel rounded-xl p-6">
+        {/* Card */}
+        <div
+          className="rounded-2xl p-6"
+          style={{
+            background: 'rgba(4,10,24,0.85)',
+            border: '1px solid rgba(255,255,255,0.09)',
+            backdropFilter: 'blur(24px)',
+          }}
+        >
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="block text-xs font-semibold text-muted uppercase tracking-wider mb-2">
+              <label className="block text-[11px] font-semibold text-slate-500 uppercase tracking-wider mb-2">
                 Email Address
               </label>
               <input
@@ -62,13 +75,13 @@ export default function LoginPage() {
                 onChange={e => setEmail(e.target.value)}
                 required
                 autoFocus
-                className="w-full bg-black/30 border border-white/10 rounded-lg px-4 py-2.5 text-white text-sm placeholder-muted focus:outline-none focus:border-primary/60 transition-colors"
+                className="w-full bg-white/[0.05] border border-white/[0.08] rounded-xl px-4 py-2.5 text-slate-100 text-sm placeholder-slate-700 focus:outline-none focus:border-blue-500/50 focus:bg-white/[0.07] transition-all"
                 placeholder="you@example.com"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-muted uppercase tracking-wider mb-2">
+              <label className="block text-[11px] font-semibold text-slate-500 uppercase tracking-wider mb-2">
                 Password
               </label>
               <input
@@ -76,29 +89,29 @@ export default function LoginPage() {
                 value={password}
                 onChange={e => setPassword(e.target.value)}
                 required
-                className="w-full bg-black/30 border border-white/10 rounded-lg px-4 py-2.5 text-white text-sm placeholder-muted focus:outline-none focus:border-primary/60 transition-colors"
+                className="w-full bg-white/[0.05] border border-white/[0.08] rounded-xl px-4 py-2.5 text-slate-100 text-sm placeholder-slate-700 focus:outline-none focus:border-blue-500/50 focus:bg-white/[0.07] transition-all"
                 placeholder="••••••••"
               />
             </div>
 
             {error && (
-              <p className="text-red-400 text-sm bg-red-900/20 border border-red-900/30 rounded-lg px-4 py-2.5">
-                {error}
-              </p>
+              <div className="flex items-start gap-2 bg-red-500/[0.10] border border-red-500/25 rounded-xl px-4 py-3">
+                <p className="text-red-400 text-sm">{error}</p>
+              </div>
             )}
 
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-primary hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold py-2.5 rounded-lg transition-colors text-sm mt-2"
+              className="w-full flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold py-2.5 rounded-xl transition-all text-sm mt-1 shadow-glow-sm"
             >
-              {loading ? 'Logging in...' : 'Login'}
+              {loading ? <><Loader2 size={14} className="animate-spin" /> Signing in…</> : 'Sign In'}
             </button>
           </form>
         </div>
 
-        <p className="text-center text-muted text-xs mt-6">
-          Pterodactyl&reg; &copy; 2015 - 2026
+        <p className="text-center text-slate-700 text-xs mt-6">
+          Pterodactyl® © 2015 – {new Date().getFullYear()}
         </p>
       </div>
     </div>

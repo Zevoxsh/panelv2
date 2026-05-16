@@ -1,31 +1,34 @@
 import { NavLink, useNavigate } from 'react-router-dom'
-import { LayoutDashboard, Settings, Palette, Key, Database, MapPin, Cpu, Server, Users, HardDrive, Egg, ArrowLeft } from 'lucide-react'
+import {
+  LayoutDashboard, Settings, Palette, Key, Database,
+  MapPin, Cpu, Server, Users, HardDrive, Egg, ArrowLeft,
+} from 'lucide-react'
 
 const sections = [
   {
-    label: 'Basic Administration',
+    label: 'Administration',
     links: [
-      { to: '/admin',           icon: LayoutDashboard, label: 'Overview',        end: true },
-      { to: '/admin/settings',  icon: Settings,        label: 'Settings',        end: true },
-      { to: '/admin/theme',     icon: Palette,         label: 'Theme',           end: true },
-      { to: '/admin/api-keys',  icon: Key,             label: 'Application API', end: true },
+      { to: '/admin',          icon: LayoutDashboard, label: 'Overview',        end: true },
+      { to: '/admin/settings', icon: Settings,        label: 'Settings',        end: true },
+      { to: '/admin/theme',    icon: Palette,         label: 'Theme',           end: true },
+      { to: '/admin/api-keys', icon: Key,             label: 'Application API', end: true },
     ],
   },
   {
     label: 'Management',
     links: [
-      { to: '/admin/databases', icon: Database, label: 'Databases',  end: true },
-      { to: '/admin/locations', icon: MapPin,   label: 'Locations',  end: true },
-      { to: '/admin/nodes',     icon: Cpu,      label: 'Nodes',      end: false },
-      { to: '/admin/servers',   icon: Server,   label: 'Servers',    end: false },
-      { to: '/admin/users',     icon: Users,    label: 'Users',      end: false },
+      { to: '/admin/databases', icon: Database, label: 'Databases', end: true },
+      { to: '/admin/locations', icon: MapPin,   label: 'Locations', end: true },
+      { to: '/admin/nodes',     icon: Cpu,      label: 'Nodes',     end: false },
+      { to: '/admin/servers',   icon: Server,   label: 'Servers',   end: false },
+      { to: '/admin/users',     icon: Users,    label: 'Users',     end: false },
     ],
   },
   {
-    label: 'Service Management',
+    label: 'Services',
     links: [
       { to: '/admin/mounts', icon: HardDrive, label: 'Mounts', end: true },
-      { to: '/admin/eggs',   icon: Egg,       label: 'Nests',  end: false },
+      { to: '/admin/eggs',   icon: Egg,       label: 'Eggs',   end: false },
     ],
   },
 ]
@@ -36,10 +39,10 @@ function SideLink({ to, icon: Icon, label, end }: { to: string; icon: React.Elem
       to={to}
       end={end}
       className={({ isActive }) =>
-        `flex items-center gap-2.5 pl-8 pr-4 py-2 text-sm transition-colors ${
+        `flex items-center gap-2.5 px-3 py-2 mx-2 rounded-lg text-[13px] font-medium transition-all border ${
           isActive
-            ? 'text-white bg-teal/20 border-l-2 border-teal'
-            : 'text-gray-400 hover:text-white hover:bg-white/5 border-l-2 border-transparent'
+            ? 'bg-teal/[0.12] text-teal border-teal/25'
+            : 'text-slate-500 hover:text-slate-200 hover:bg-white/[0.04] border-transparent'
         }`
       }
     >
@@ -53,37 +56,46 @@ export default function AdminSidebar() {
   const navigate = useNavigate()
 
   return (
-    <aside className="w-[220px] shrink-0 flex flex-col bg-admin-sidebar h-screen sticky top-0 z-20">
+    <aside
+      className="w-52 shrink-0 flex flex-col h-screen sticky top-0 z-20"
+      style={{ background: '#020407', borderRight: '1px solid rgba(255,255,255,0.05)' }}
+    >
       {/* Logo */}
-      <div className="flex items-center gap-2.5 px-5 py-4 border-b border-admin-border/50">
-        <div className="w-7 h-7 bg-teal rounded-md flex items-center justify-center shrink-0">
-          <span className="text-white font-bold text-xs">P</span>
+      <div className="flex items-center gap-2.5 px-4 py-5 shrink-0">
+        <div className="w-7 h-7 rounded-md flex items-center justify-center shrink-0"
+          style={{ background: 'linear-gradient(135deg, #0d9488, #06b6d4)' }}>
+          <span className="text-white font-bold text-xs">A</span>
         </div>
-        <span className="text-white font-semibold text-[15px] tracking-tight">Pterodactyl</span>
+        <div>
+          <p className="text-slate-200 font-semibold text-[13px] leading-none">Admin</p>
+          <p className="text-slate-600 text-[10px] mt-0.5">Panel Control</p>
+        </div>
       </div>
 
-      {/* Sections */}
-      <nav className="flex-1 overflow-y-auto py-3">
+      {/* Nav sections */}
+      <nav className="flex-1 overflow-y-auto py-2 space-y-4">
         {sections.map((section) => (
-          <div key={section.label} className="mb-3">
-            <p className="px-5 py-1.5 text-[10px] font-bold uppercase tracking-widest text-gray-500">
+          <div key={section.label}>
+            <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-700 px-5 mb-1.5">
               {section.label}
             </p>
-            {section.links.map(({ to, icon, label, end }) => (
-              <SideLink key={to} to={to} icon={icon} label={label} end={end} />
-            ))}
+            <div className="space-y-0.5">
+              {section.links.map(({ to, icon, label, end }) => (
+                <SideLink key={to} to={to} icon={icon} label={label} end={end} />
+              ))}
+            </div>
           </div>
         ))}
       </nav>
 
-      {/* Back to client */}
-      <div className="border-t border-admin-border/50 p-3">
+      {/* Back to client panel */}
+      <div className="p-3 shrink-0" style={{ borderTop: '1px solid rgba(255,255,255,0.05)' }}>
         <button
           onClick={() => navigate('/servers')}
-          className="w-full flex items-center gap-2.5 px-4 py-2 text-sm text-gray-400 hover:text-white hover:bg-white/5 rounded-md transition-colors"
+          className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-[13px] font-medium text-slate-600 hover:text-slate-300 hover:bg-white/[0.04] transition-all border border-transparent"
         >
           <ArrowLeft size={14} />
-          Back to Panel
+          Client Panel
         </button>
       </div>
     </aside>
