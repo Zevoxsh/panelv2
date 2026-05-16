@@ -418,14 +418,18 @@ export default function ServerPage() {
     }
   }, [id, server?.id, server?.suspended, reconnectTick])
 
-  function sendCommand(e: React.FormEvent) {
+  async function sendCommand(e: React.FormEvent) {
     e.preventDefault()
     const cmd = command.trim()
-    if (!cmd || status === 'offline' || !wsRef.current) return
+    if (!cmd || status === 'offline') return
     setCommand('')
     const safe = cmd.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
     setLines(prev => [...prev, `<span style="color:#64748b">&gt; ${safe}</span>`])
-    wsRef.current.send(JSON.stringify({ event: 'send command', args: [cmd] }))
+    try {
+      await api.post(`/client/servers/${id}/players/command`, { command: cmd })
+    } catch (err: any) {
+      setLines(prev => [...prev, `<span style="color:#f87171">Error: ${err.message ?? 'Command failed'}</span>`])
+    }
   }
 
   async function power(action: 'start' | 'stop' | 'restart' | 'kill') {
@@ -483,8 +487,8 @@ export default function ServerPage() {
     : undefined
 
   function sendCommandStr(cmd: string) {
-    if (status === 'offline' || !wsRef.current) return
-    wsRef.current.send(JSON.stringify({ event: 'send command', args: [cmd] }))
+    if (status === 'offline') return
+    api.post(`/client/servers/${id}/players/command`, { command: cmd }).catch(() => {})
   }
   const isRunning = status === 'online' || status === 'starting'
 

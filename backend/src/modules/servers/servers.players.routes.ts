@@ -19,12 +19,12 @@ type WingsNode = { scheme: string; fqdn: string; daemonPort: number; daemonToken
 
 function wingsCommand(node: WingsNode, serverId: string, command: string): Promise<{ ok: boolean; status: number; body: string }> {
   return new Promise((resolve, reject) => {
-    const payload = JSON.stringify({ command })
+    const payload = JSON.stringify({ commands: [command] })
     const transport = node.scheme === 'https' ? https : http
     const req = transport.request({
       hostname: node.fqdn,
       port: node.daemonPort,
-      path: `/api/servers/${serverId}/command`,
+      path: `/api/servers/${serverId}/commands`,
       method: 'POST',
       headers: {
         Authorization: `Bearer ${node.daemonToken}`,
