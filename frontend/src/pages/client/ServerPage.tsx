@@ -418,11 +418,12 @@ export default function ServerPage() {
     }
   }, [id, server?.id, server?.suspended, reconnectTick])
 
-  function sendCommand(e: React.FormEvent) {
+  async function sendCommand(e: React.FormEvent) {
     e.preventDefault()
-    if (!wsRef.current || !connected || !command.trim()) return
-    wsRef.current.send(JSON.stringify({ event: 'send command', args: [command.trim()] }))
+    const cmd = command.trim()
+    if (!cmd || status === 'offline') return
     setCommand('')
+    try { await api.post(`/client/servers/${id}/players/command`, { command: cmd }) } catch {}
   }
 
   async function power(action: 'start' | 'stop' | 'restart' | 'kill') {
@@ -479,9 +480,9 @@ export default function ServerPage() {
     : /sponge/.test((server.eggName ?? '').toLowerCase()) ? 'sponge'
     : undefined
 
-  function sendCommandStr(cmd: string) {
-    if (!wsRef.current || !connected) return
-    wsRef.current.send(JSON.stringify({ event: 'send command', args: [cmd] }))
+  async function sendCommandStr(cmd: string) {
+    if (status === 'offline') return
+    try { await api.post(`/client/servers/${id}/players/command`, { command: cmd }) } catch {}
   }
   const isRunning = status === 'online' || status === 'starting'
 
@@ -837,17 +838,13 @@ export default function ServerPage() {
                   type="text"
                   value={command}
                   onChange={e => setCommand(e.target.value)}
-                  disabled={!connected || status === 'offline'}
-                  placeholder={
-                    !connected ? 'Connecting…'
-                    : status === 'offline' ? 'Server is offline'
-                    : 'Enter a command…'
-                  }
+                  disabled={status === 'offline'}
+                  placeholder={status === 'offline' ? 'Server is offline' : 'Enter a command…'}
                   className="flex-1 bg-transparent text-sm font-mono text-slate-200 placeholder-slate-700 outline-none disabled:opacity-40"
                 />
                 <button
                   type="submit"
-                  disabled={!connected || !command.trim() || status === 'offline'}
+                  disabled={!command.trim() || status === 'offline'}
                   className="p-1.5 text-slate-600 hover:text-slate-300 disabled:opacity-30 transition-colors shrink-0"
                 >
                   <Send size={13} />
@@ -927,8 +924,6 @@ export default function ServerPage() {
           <PlayersTab
             serverId={server.id}
             lines={lines}
-            onSendCommand={sendCommandStr}
-            connected={connected}
             status={status}
           />
         </div>

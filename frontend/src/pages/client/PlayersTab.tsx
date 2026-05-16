@@ -1,13 +1,12 @@
 import { useState, useEffect, useRef } from 'react'
 import { Users, ChevronDown } from 'lucide-react'
+import { api } from '../../lib/api'
 
 type ServerStatus = 'offline' | 'online' | 'starting' | 'stopping'
 
 interface Props {
   serverId: string
   lines: string[]
-  onSendCommand: (cmd: string) => void
-  connected: boolean
   status: ServerStatus
 }
 
@@ -31,7 +30,10 @@ const ACTIONS = [
 
 function stripHtml(s: string) { return s.replace(/<[^>]*>/g, '') }
 
-function PlayerCard({ name, onAction }: { name: string; onAction: (cmd: string) => void }) {
+function PlayerCard({ name, serverId }: { name: string; serverId: string }) {
+  async function sendCmd(cmd: string) {
+    try { await api.post(`/client/servers/${serverId}/players/command`, { command: cmd }) } catch {}
+  }
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
 
@@ -78,7 +80,7 @@ function PlayerCard({ name, onAction }: { name: string; onAction: (cmd: string) 
               ) : (
                 <button
                   key={i}
-                  onClick={() => { onAction(a.cmd!(name)); setOpen(false) }}
+                  onClick={() => { sendCmd(a.cmd!(name)); setOpen(false) }}
                   className="w-full text-left px-3 py-1.5 text-[13px] text-slate-400 hover:text-white hover:bg-white/[0.06] transition-colors"
                 >
                   {a.label}
@@ -92,22 +94,26 @@ function PlayerCard({ name, onAction }: { name: string; onAction: (cmd: string) 
   )
 }
 
-export default function PlayersTab({ lines, onSendCommand, connected, status }: Props) {
+export default function PlayersTab({ serverId, lines, status }: Props) {
   const [players, setPlayers] = useState<Set<string>>(new Set())
   const prevLinesLen = useRef(0)
   const sentList = useRef(false)
 
-  // Send `list` once server is online and connected
+  async function sendCmd(cmd: string) {
+    try { await api.post(`/client/servers/${serverId}/players/command`, { command: cmd }) } catch {}
+  }
+
+  // Send `list` once server is online
   useEffect(() => {
-    if (connected && status === 'online' && !sentList.current) {
+    if (status === 'online' && !sentList.current) {
       sentList.current = true
-      onSendCommand('list')
+      sendCmd('list')
     }
     if (status === 'offline') {
       sentList.current = false
       setPlayers(new Set())
     }
-  }, [connected, status])
+  }, [status])
 
   // Parse new console lines for player events
   useEffect(() => {
@@ -154,9 +160,9 @@ export default function PlayersTab({ lines, onSendCommand, connected, status }: 
         <p className="text-slate-400 text-sm">
           {playerList.length} player{playerList.length !== 1 ? 's' : ''} online
         </p>
-        {connected && status === 'online' && (
+        {status === 'online' && (
           <button
-            onClick={() => onSendCommand('list')}
+            onClick={() => sendCmd('list')}
             className="text-xs text-slate-500 hover:text-slate-300 transition-colors"
           >
             Refresh
@@ -164,7 +170,7 @@ export default function PlayersTab({ lines, onSendCommand, connected, status }: 
         )}
       </div>
 
-      {status === 'offline' || !connected ? (
+      {status === 'offline' ? (
         <div className="flex-1 flex items-center justify-center px-6 pb-6">
           <div className="text-center">
             <Users size={32} className="text-slate-700 mx-auto mb-3" />
@@ -187,7 +193,7 @@ export default function PlayersTab({ lines, onSendCommand, connected, status }: 
               <PlayerCard
                 key={name}
                 name={name}
-                onAction={cmd => onSendCommand(cmd)}
+                serverId={serverId}
               />
             ))}
           </div>
