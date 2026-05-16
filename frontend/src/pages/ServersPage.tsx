@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { api } from '../lib/api'
 import { useAuth } from '../hooks/useAuth'
-import { Server, CheckCircle, Clock, PauseCircle } from 'lucide-react'
+import { Search } from 'lucide-react'
 
 interface ServerItem {
   id: string; name: string; description: string | null
@@ -15,61 +15,49 @@ interface ServerItem {
   userName: string | null; userEmail: string | null
 }
 
-function StatusBadge({ installed, suspended }: { installed: boolean; suspended: boolean }) {
-  if (suspended) return (
-    <span className="flex items-center gap-1.5 text-xs text-yellow-400 font-medium">
-      <PauseCircle size={12} /> Suspendu
-    </span>
-  )
-  if (installed) return (
-    <span className="flex items-center gap-1.5 text-xs text-green-400 font-medium">
-      <CheckCircle size={12} /> En ligne
-    </span>
-  )
-  return (
-    <span className="flex items-center gap-1.5 text-xs text-blue-400 font-medium">
-      <Clock size={12} /> Installation...
-    </span>
-  )
+function fmtGiB(mib: number) {
+  return (mib / 1024).toFixed(2) + ' GiB'
 }
 
-function ServerCard({ server }: { server: ServerItem }) {
-  return (
-    <Link to={`/servers/${server.id}`} className="block bg-surface border border-border rounded-xl p-5 hover:border-primary/50 transition-colors">
-      <div className="flex items-start justify-between mb-3">
-        <div className="flex items-center gap-3">
-          <div className="w-9 h-9 bg-primary/10 border border-primary/20 rounded-lg flex items-center justify-center">
-            <Server size={16} className="text-primary-light" />
-          </div>
-          <div>
-            <p className="text-white font-semibold text-sm">{server.name}</p>
-            <p className="text-muted text-xs">{server.eggName ?? '—'}</p>
-          </div>
-        </div>
-        <StatusBadge installed={server.installed} suspended={server.suspended} />
-      </div>
+function StatusCell({ installed, suspended }: { installed: boolean; suspended: boolean }) {
+  if (suspended) return <span className="text-yellow-400 text-sm">Suspended</span>
+  if (!installed) return <span className="text-blue-400 text-sm">Installing</span>
+  return <span className="text-online text-sm">Online</span>
+}
 
-      <div className="grid grid-cols-3 gap-3 mt-4">
-        <div>
-          <p className="text-muted text-xs mb-0.5">Node</p>
-          <p className="text-white text-xs font-medium">{server.nodeName ?? '—'}</p>
-        </div>
-        <div>
-          <p className="text-muted text-xs mb-0.5">Adresse</p>
-          <p className="text-white text-xs font-mono">{server.allocationIpAlias ?? server.allocationIp ?? '—'}:{server.allocationPort ?? '—'}</p>
-        </div>
-        <div>
-          <p className="text-muted text-xs mb-0.5">Mémoire</p>
-          <p className="text-white text-xs">{server.memory.toLocaleString()} MiB</p>
-        </div>
-      </div>
+function ServerRow({ server }: { server: ServerItem }) {
+  const address = server.allocationIpAlias ?? server.allocationIp ?? '—'
+  const port = server.allocationPort ?? '—'
+
+  return (
+    <Link
+      to={`/servers/${server.id}`}
+      className="grid grid-cols-[120px_1fr_220px_120px_140px_140px_100px] items-center px-6 py-3.5 hover:bg-white/5 transition-colors border-b border-white/[0.04] group"
+    >
+      <span className="text-muted text-sm font-mono">{server.id.slice(0, 8)}</span>
+      <span className="text-white text-sm font-medium group-hover:text-primary transition-colors truncate pr-4">{server.name}</span>
+      <span className="text-primary text-sm font-mono">{address}:{port}</span>
+      <span className="text-muted text-sm">
+        {server.cpu === 0 ? '—' : `${server.cpu} %`}
+        <span className="text-[11px] text-muted/50 ml-1">/ Unlimited</span>
+      </span>
+      <span className="text-muted text-sm">
+        {fmtGiB(server.memory)}
+        <span className="text-[11px] text-muted/50 ml-1">/ {server.memory === 0 ? 'Unlimited' : fmtGiB(server.memory)}</span>
+      </span>
+      <span className="text-muted text-sm">
+        {fmtGiB(server.disk)}
+        <span className="text-[11px] text-muted/50 ml-1">/ Unlimited</span>
+      </span>
+      <StatusCell installed={server.installed} suspended={server.suspended} />
     </Link>
   )
 }
 
 export default function ServersPage() {
-  const { user, isAdmin } = useAuth()
+  const { isAdmin } = useAuth()
   const [showAll, setShowAll] = useState(false)
+  const [search, setSearch] = useState('')
 
   const { data: myServers = [], isLoading: loadingMine } = useQuery<ServerItem[]>({
     queryKey: ['client', 'servers'],
@@ -82,49 +70,68 @@ export default function ServersPage() {
     enabled: isAdmin && showAll,
   })
 
-  const servers = showAll && isAdmin ? allServers : myServers
+  const raw = showAll && isAdmin ? allServers : myServers
   const isLoading = showAll && isAdmin ? loadingAll : loadingMine
-  const count = servers.length
+  const servers = search.trim()
+    ? raw.filter(s =>
+        s.name.toLowerCase().includes(search.toLowerCase()) ||
+        s.id.toLowerCase().includes(search.toLowerCase()),
+      )
+    : raw
 
   return (
-    <div>
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-xl font-bold text-white">
-            {isAdmin && showAll ? 'Tous les serveurs' : 'Mes serveurs'}
-          </h1>
-          <p className="text-muted text-sm mt-0.5">{count} serveur{count !== 1 ? 's' : ''}</p>
+    <div className="min-h-full flex flex-col">
+      {/* Top bar */}
+      <div className="flex items-center gap-3 px-6 py-4 border-b border-white/[0.06]">
+        <div className="relative flex-1 max-w-sm">
+          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
+          <input
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            placeholder="Search Something..."
+            className="w-full bg-white/[0.06] border border-white/10 rounded-md pl-9 pr-4 py-1.5 text-sm text-white placeholder-muted focus:outline-none focus:border-primary/50 transition-colors"
+          />
         </div>
 
         {isAdmin && (
-          <div className="flex items-center bg-surface border border-border rounded-lg p-1">
-            <button onClick={() => setShowAll(false)}
-              className={`px-3 py-1.5 text-sm rounded-md transition-colors ${!showAll ? 'bg-primary text-white font-medium' : 'text-muted hover:text-white'}`}>
-              Mes serveurs
-            </button>
-            <button onClick={() => setShowAll(true)}
-              className={`px-3 py-1.5 text-sm rounded-md transition-colors ${showAll ? 'bg-primary text-white font-medium' : 'text-muted hover:text-white'}`}>
-              Tous les serveurs
+          <div className="ml-auto flex items-center gap-2 text-xs text-muted uppercase tracking-widest">
+            <span>Showing Your Servers</span>
+            <button
+              onClick={() => setShowAll(o => !o)}
+              className={`relative w-10 h-5 rounded-full transition-colors ${showAll ? 'bg-primary' : 'bg-white/20'}`}
+            >
+              <span
+                className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${showAll ? 'translate-x-5' : 'translate-x-0.5'}`}
+              />
             </button>
           </div>
         )}
       </div>
 
-      {isLoading ? (
-        <p className="text-muted text-sm">Chargement...</p>
-      ) : servers.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-24 text-center">
-          <div className="w-12 h-12 bg-surface border border-border rounded-xl flex items-center justify-center mb-4">
-            <Server size={20} className="text-muted" />
+      {/* Table */}
+      <div className="flex-1 mx-6 my-4 ptero-panel rounded-lg overflow-hidden">
+        {/* Header */}
+        <div className="grid grid-cols-[120px_1fr_220px_120px_140px_140px_100px] px-6 py-3 border-b border-white/[0.06]">
+          {['ID', 'Name', 'Allocation', 'CPU', 'Ram', 'Disk', 'Status'].map(h => (
+            <span key={h} className="text-primary text-sm font-medium">{h}</span>
+          ))}
+        </div>
+
+        {isLoading ? (
+          <div className="flex items-center justify-center py-16 text-muted text-sm">Loading...</div>
+        ) : servers.length === 0 ? (
+          <div className="flex items-center justify-center py-16 text-muted text-sm">
+            {search ? 'No servers match your search.' : 'No servers found.'}
           </div>
-          <p className="text-white font-medium text-sm">Aucun serveur</p>
-          <p className="text-muted text-xs mt-1">Les serveurs apparaîtront ici.</p>
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-          {servers.map(s => <ServerCard key={s.id} server={s} />)}
-        </div>
-      )}
+        ) : (
+          servers.map(s => <ServerRow key={s.id} server={s} />)
+        )}
+      </div>
+
+      {/* Footer */}
+      <p className="text-center text-muted text-xs py-4">
+        Pterodactyl&reg; &copy; 2015 - 2026
+      </p>
     </div>
   )
 }

@@ -11,7 +11,7 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false)
 
   useEffect(() => {
-    if (user) navigate(user.role === 'admin' ? '/admin' : '/client')
+    if (user) navigate(user.role === 'admin' ? '/admin' : '/servers')
   }, [user, navigate])
 
   async function handleSubmit(e: React.FormEvent) {
@@ -20,67 +20,63 @@ export default function LoginPage() {
     setLoading(true)
     try {
       const logged = await login(email, password)
-      navigate(logged.role === 'admin' ? '/admin' : '/client')
+      navigate(logged.role === 'admin' ? '/admin' : '/servers')
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Identifiants invalides')
+      setError(err instanceof Error ? err.message : 'Invalid credentials')
     } finally {
       setLoading(false)
     }
   }
 
   return (
-    <div className="flex h-screen bg-base">
-      {/* Panneau gauche — branding */}
-      <div className="hidden lg:flex lg:w-1/2 flex-col items-center justify-center bg-gradient-to-br from-purple-950 to-surface p-12">
-        <div className="w-16 h-16 bg-primary rounded-2xl mb-6 flex items-center justify-center">
-          <span className="text-white text-2xl font-bold">P</span>
-        </div>
-        <h1 className="text-primary-light text-3xl font-bold mb-3">MonPanel</h1>
-        <p className="text-muted text-center text-sm max-w-xs">
-          Gestion de serveurs de jeux — rapide, fiable, sous ton contrôle.
-        </p>
-      </div>
+    <div
+      className="flex h-screen items-center justify-center"
+      style={{
+        backgroundImage: 'url(/bg.jpg)',
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+      }}
+    >
+      <div className="absolute inset-0 bg-black/60" />
 
-      {/* Panneau droit — formulaire */}
-      <div className="w-full lg:w-1/2 flex items-center justify-center p-8">
-        <div className="w-full max-w-sm">
-          <div className="mb-8 lg:hidden flex items-center gap-3">
-            <div className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center">
-              <span className="text-white font-bold">P</span>
-            </div>
-            <span className="text-primary-light font-bold text-xl">MonPanel</span>
+      <div className="relative z-10 w-full max-w-sm mx-4">
+        {/* Logo */}
+        <div className="flex flex-col items-center mb-8">
+          <div className="w-12 h-12 bg-primary rounded-xl flex items-center justify-center mb-4">
+            <span className="text-white text-xl font-bold">P</span>
           </div>
+          <h1 className="text-white text-xl font-semibold">Pterodactyl</h1>
+          <p className="text-muted text-sm mt-1">Game Server Management Panel</p>
+        </div>
 
-          <h2 className="text-white text-2xl font-bold mb-2">Connexion</h2>
-          <p className="text-muted text-sm mb-8">Entrez vos identifiants pour accéder au panel.</p>
-
-          <form onSubmit={handleSubmit} className="space-y-5">
+        {/* Form */}
+        <div className="ptero-panel rounded-xl p-6">
+          <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label htmlFor="email" className="block text-xs font-semibold text-muted uppercase tracking-wider mb-2">
-                Email
+              <label className="block text-xs font-semibold text-muted uppercase tracking-wider mb-2">
+                Email Address
               </label>
               <input
-                id="email"
                 type="email"
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                onChange={e => setEmail(e.target.value)}
                 required
-                className="w-full bg-base border border-border rounded-lg px-4 py-2.5 text-white text-sm placeholder-muted focus:outline-none focus:border-primary transition-colors"
-                placeholder="admin@panel.local"
+                autoFocus
+                className="w-full bg-black/30 border border-white/10 rounded-lg px-4 py-2.5 text-white text-sm placeholder-muted focus:outline-none focus:border-primary/60 transition-colors"
+                placeholder="you@example.com"
               />
             </div>
 
             <div>
-              <label htmlFor="password" className="block text-xs font-semibold text-muted uppercase tracking-wider mb-2">
-                Mot de passe
+              <label className="block text-xs font-semibold text-muted uppercase tracking-wider mb-2">
+                Password
               </label>
               <input
-                id="password"
                 type="password"
                 value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                onChange={e => setPassword(e.target.value)}
                 required
-                className="w-full bg-base border border-border rounded-lg px-4 py-2.5 text-white text-sm placeholder-muted focus:outline-none focus:border-primary transition-colors"
+                className="w-full bg-black/30 border border-white/10 rounded-lg px-4 py-2.5 text-white text-sm placeholder-muted focus:outline-none focus:border-primary/60 transition-colors"
                 placeholder="••••••••"
               />
             </div>
@@ -94,12 +90,16 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-primary hover:bg-purple-600 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold py-2.5 rounded-lg transition-colors text-sm"
+              className="w-full bg-primary hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold py-2.5 rounded-lg transition-colors text-sm mt-2"
             >
-              {loading ? 'Connexion...' : 'Se connecter'}
+              {loading ? 'Logging in...' : 'Login'}
             </button>
           </form>
         </div>
+
+        <p className="text-center text-muted text-xs mt-6">
+          Pterodactyl&reg; &copy; 2015 - 2026
+        </p>
       </div>
     </div>
   )

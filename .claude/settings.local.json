@@ -91,7 +91,8 @@
       "Bash(xargs ls)",
       "Bash(python3 -c 'import json; print\\(json.dumps\\('\\\\''{\"server.properties\":{\"parser\":\"properties\",\"find\":{\"server-ip\":\"0.0.0.0\",\"server-port\":\"{{server.build.default.port}}\",\"query.port\":\"{{server.build.default.port}}\"}}}'\\\\''\\)\\)')",
       "Bash(awk '{print $1, $2, $NF}')",
-      "Bash(docker restart *)"
+      "Bash(docker restart *)",
+      "Skill(superpowers:brainstorming)"
     ]
   }
 }

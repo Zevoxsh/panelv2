@@ -3,6 +3,7 @@ import { useEffect } from 'react'
 import { useAuth } from './hooks/useAuth'
 import LoginPage from './pages/login/LoginPage'
 import MainLayout from './components/layout/MainLayout'
+import AdminLayout from './components/layout/AdminLayout'
 import ServersPage from './pages/ServersPage'
 import ApiKeysPage from './pages/shared/ApiKeysPage'
 import AdminDashboard from './pages/admin/AdminDashboard'
@@ -24,8 +25,8 @@ function RequireAuth({ adminOnly = false }: { adminOnly?: boolean }) {
   const { user, isLoading } = useAuth()
   if (isLoading) {
     return (
-      <div className="flex h-screen items-center justify-center bg-base text-muted text-sm">
-        Chargement...
+      <div className="flex h-screen items-center justify-center bg-admin-base text-muted text-sm">
+        Loading...
       </div>
     )
   }
@@ -42,16 +43,19 @@ function AppRoutes() {
     <Routes>
       <Route path="/login" element={<LoginPage />} />
 
+      {/* Client routes — MainLayout (bg image + navy sidebar) */}
       <Route element={<RequireAuth />}>
         <Route element={<MainLayout />}>
           <Route path="/servers" element={<ServersPage />} />
           <Route path="/servers/:id" element={<ServerPage />} />
           <Route path="/api-keys" element={<ApiKeysPage />} />
+          <Route path="/account" element={<ApiKeysPage />} />
         </Route>
       </Route>
 
+      {/* Admin routes — AdminLayout (flat dark + teal sidebar) */}
       <Route element={<RequireAuth adminOnly />}>
-        <Route element={<MainLayout />}>
+        <Route element={<AdminLayout />}>
           <Route path="/admin" element={<AdminDashboard />} />
           <Route path="/admin/users" element={<UsersPage />} />
           <Route path="/admin/api-keys" element={<ApiKeysAdminPage />} />

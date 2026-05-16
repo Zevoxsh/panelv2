@@ -4,12 +4,26 @@ export default {
   theme: {
     extend: {
       colors: {
-        surface: '#1a1d2e',
-        base: '#0f1117',
-        primary: '#7c3aed',
-        'primary-light': '#a5b4fc',
-        border: '#1f2937',
-        muted: '#6b7280',
+        // Client panel
+        base:    '#0f1117',
+        navy:    '#181b2d',
+        surface: 'rgba(14,16,30,0.88)',
+        // Admin panel
+        'admin-base':    '#2f3241',
+        'admin-surface': '#383b4f',
+        'admin-sidebar': '#1e2030',
+        // Accents
+        primary: '#3b82f6',
+        danger:  '#ef4444',
+        teal:    '#0d9488',
+        online:  '#22c55e',
+        // Common
+        border:  '#2a2d3e',
+        muted:   '#6b7280',
+        'admin-border': '#484b62',
+      },
+      fontFamily: {
+        mono: ['Menlo', 'Monaco', 'Consolas', 'monospace'],
       },
     },
   },

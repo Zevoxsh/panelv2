@@ -55,53 +55,53 @@ export default function ServersAdminPage() {
     <div>
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-xl font-bold text-white">Serveurs</h1>
-          <p className="text-muted text-sm mt-0.5">{servers.length} serveur{servers.length !== 1 ? 's' : ''}</p>
+          <h1 className="text-2xl font-bold text-white">Servers</h1>
+          <p className="text-gray-400 text-sm mt-0.5">{servers.length} server{servers.length !== 1 ? 's' : ''}</p>
         </div>
         <button
           onClick={() => navigate('/admin/servers/new')}
-          className="flex items-center gap-2 bg-primary hover:bg-purple-600 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
+          className="flex items-center gap-2 bg-teal hover:opacity-90 text-white text-sm font-medium px-4 py-2 rounded-lg transition-opacity"
         >
           <Plus size={14} />
-          Nouveau serveur
+          New Server
         </button>
       </div>
 
       {isLoading ? (
-        <p className="text-muted text-sm">Chargement...</p>
+        <p className="text-gray-400 text-sm">Loading...</p>
       ) : (
-        <div className="bg-surface border border-border rounded-xl overflow-hidden">
+        <div className="bg-admin-surface border border-admin-border/50 rounded-lg overflow-hidden">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-border">
-                <th className="text-left text-xs text-muted uppercase tracking-wider px-4 py-3 font-medium">Nom</th>
-                <th className="text-left text-xs text-muted uppercase tracking-wider px-4 py-3 font-medium">Propriétaire</th>
-                <th className="text-left text-xs text-muted uppercase tracking-wider px-4 py-3 font-medium">Node / IP</th>
-                <th className="text-left text-xs text-muted uppercase tracking-wider px-4 py-3 font-medium">Ressources</th>
-                <th className="text-left text-xs text-muted uppercase tracking-wider px-4 py-3 font-medium">Status</th>
+              <tr className="border-b border-admin-border/50">
+                <th className="text-left text-xs text-gray-400 uppercase tracking-wider px-4 py-3 font-medium">Name</th>
+                <th className="text-left text-xs text-gray-400 uppercase tracking-wider px-4 py-3 font-medium">Owner</th>
+                <th className="text-left text-xs text-gray-400 uppercase tracking-wider px-4 py-3 font-medium">Node / IP</th>
+                <th className="text-left text-xs text-gray-400 uppercase tracking-wider px-4 py-3 font-medium">Resources</th>
+                <th className="text-left text-xs text-gray-400 uppercase tracking-wider px-4 py-3 font-medium">Status</th>
                 <th className="text-right px-4 py-3"></th>
               </tr>
             </thead>
             <tbody>
               {servers.map((s) => (
-                <tr key={s.id} className="border-b border-border last:border-0 hover:bg-border/30 transition-colors">
+                <tr key={s.id} className="border-b border-admin-border/30 last:border-0 hover:bg-white/5 transition-colors">
                   <td className="px-4 py-3">
-                    <Link to={`/admin/servers/${s.id}`} className="text-white font-medium hover:text-primary-light transition-colors">
+                    <Link to={`/admin/servers/${s.id}`} className="text-white font-medium hover:text-teal transition-colors">
                       {s.name}
                     </Link>
-                    <p className="text-muted text-xs">{s.eggName ?? '—'}</p>
+                    <p className="text-gray-400 text-xs">{s.eggName ?? '—'}</p>
                   </td>
                   <td className="px-4 py-3">
                     <p className="text-white text-xs">{s.userName ?? '—'}</p>
-                    <p className="text-muted text-xs">{s.userEmail ?? ''}</p>
+                    <p className="text-gray-400 text-xs">{s.userEmail ?? ''}</p>
                   </td>
                   <td className="px-4 py-3">
                     <p className="text-white text-xs">{s.nodeName ?? '—'}</p>
-                    <p className="text-muted text-xs font-mono">
+                    <p className="text-gray-400 text-xs font-mono">
                       {s.allocationIpAlias ?? s.allocationIp ?? '—'}:{s.allocationPort ?? '—'}
                     </p>
                   </td>
-                  <td className="px-4 py-3 text-muted text-xs">
+                  <td className="px-4 py-3 text-gray-400 text-xs">
                     {s.memory.toLocaleString()} MiB RAM · {s.disk.toLocaleString()} MiB disk
                     {s.cpu > 0 && ` · ${s.cpu}% CPU`}
                   </td>
@@ -113,16 +113,16 @@ export default function ServersAdminPage() {
                       <button
                         onClick={() => suspendMutation.mutate({ id: s.id, suspended: !s.suspended })}
                         disabled={suspendMutation.isPending}
-                        title={s.suspended ? 'Réactiver' : 'Suspendre'}
-                        className={`p-1.5 rounded-md hover:bg-border transition-colors ${
-                          s.suspended ? 'text-green-400 hover:text-green-300' : 'text-yellow-400 hover:text-yellow-300'
+                        title={s.suspended ? 'Unsuspend' : 'Suspend'}
+                        className={`p-1.5 rounded-md hover:bg-white/10 transition-colors ${
+                          s.suspended ? 'text-green-400' : 'text-yellow-400'
                         }`}
                       >
                         {s.suspended ? <Play size={13} /> : <Pause size={13} />}
                       </button>
                       <button
-                        onClick={() => { if (confirm(`Supprimer le serveur "${s.name}" ?`)) deleteMutation.mutate(s.id) }}
-                        className="p-1.5 text-muted hover:text-red-400 rounded-md hover:bg-border transition-colors"
+                        onClick={() => { if (confirm(`Delete server "${s.name}"?`)) deleteMutation.mutate(s.id) }}
+                        className="p-1.5 text-gray-400 hover:text-red-400 rounded-md hover:bg-white/5 transition-colors"
                       >
                         <Trash2 size={13} />
                       </button>
@@ -131,7 +131,7 @@ export default function ServersAdminPage() {
                 </tr>
               ))}
               {servers.length === 0 && (
-                <tr><td colSpan={6} className="px-4 py-8 text-center text-muted text-sm">Aucun serveur</td></tr>
+                <tr><td colSpan={6} className="px-4 py-8 text-center text-gray-400 text-sm">No servers found</td></tr>
               )}
             </tbody>
           </table>

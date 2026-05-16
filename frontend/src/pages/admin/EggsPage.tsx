@@ -60,8 +60,8 @@ function ImportModal({ onClose, onImported }: { onClose: () => void; onImported:
 
   return (
     <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4" onClick={onClose}>
-      <div className="bg-surface border border-border rounded-xl w-full max-w-lg" onClick={(e) => e.stopPropagation()}>
-        <div className="flex items-center justify-between px-5 py-4 border-b border-border">
+      <div className="bg-admin-surface border border-admin-border/50 rounded-lg w-full max-w-lg" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-between px-5 py-4 border-b border-admin-border/50">
           <p className="text-white font-semibold text-sm">Importer un egg Pterodactyl</p>
           <button onClick={onClose} className="p-1 text-muted hover:text-white transition-colors">
             <X size={16} />
@@ -134,7 +134,7 @@ function ImportModal({ onClose, onImported }: { onClose: () => void; onImported:
               <button
                 onClick={() => { setImportError(null); importMutation.mutate() }}
                 disabled={!selectedImage || importMutation.isPending}
-                className="w-full bg-primary hover:bg-purple-600 disabled:opacity-50 text-white text-sm font-medium py-2.5 rounded-lg transition-colors"
+                className="w-full bg-teal hover:opacity-90 disabled:opacity-50 text-white text-sm font-medium py-2.5 rounded-lg transition-colors"
               >
                 {importMutation.isPending ? 'Import en cours...' : `Importer "${parsed.name}"`}
               </button>
@@ -178,14 +178,14 @@ export default function EggsPage() {
         <div className="flex items-center gap-2">
           <button
             onClick={() => setShowImport(true)}
-            className="flex items-center gap-2 text-muted hover:text-white border border-border hover:border-primary px-4 py-2 rounded-lg text-sm transition-colors"
+            className="flex items-center gap-2 text-gray-400 hover:text-white border border-admin-border/50 hover:border-teal/50 px-4 py-2 rounded-lg text-sm transition-colors"
           >
             <Upload size={14} />
             Importer
           </button>
           <button
             onClick={() => navigate('/admin/eggs/new')}
-            className="flex items-center gap-2 bg-primary hover:bg-purple-600 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
+            className="flex items-center gap-2 bg-teal hover:opacity-90 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
           >
             <Plus size={14} />
             Nouvel egg
@@ -196,20 +196,20 @@ export default function EggsPage() {
       {isLoading ? (
         <p className="text-muted text-sm">Chargement...</p>
       ) : (
-        <div className="bg-surface border border-border rounded-xl overflow-hidden">
+        <div className="bg-admin-surface border border-admin-border/50 rounded-lg overflow-hidden">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-border">
-                <th className="text-left text-xs text-muted uppercase tracking-wider px-4 py-3 font-medium">Nom</th>
-                <th className="text-left text-xs text-muted uppercase tracking-wider px-4 py-3 font-medium">Image Docker</th>
+              <tr className="border-b border-admin-border/50">
+                <th className="text-left text-xs text-gray-400 uppercase tracking-wider px-4 py-3 font-medium">Nom</th>
+                <th className="text-left text-xs text-gray-400 uppercase tracking-wider px-4 py-3 font-medium">Image Docker</th>
                 <th className="text-right px-4 py-3"></th>
               </tr>
             </thead>
             <tbody>
               {eggs.map((egg) => (
-                <tr key={egg.id} className="border-b border-border last:border-0 hover:bg-border/30 transition-colors">
+                <tr key={egg.id} className="border-b border-admin-border/50 last:border-0 hover:bg-white/5 transition-colors">
                   <td className="px-4 py-3">
-                    <Link to={`/admin/eggs/${egg.id}`} className="text-white font-medium hover:text-primary-light transition-colors flex items-center gap-2">
+                    <Link to={`/admin/eggs/${egg.id}`} className="text-white font-medium hover:text-teal transition-colors flex items-center gap-2">
                       <Egg size={14} className="text-muted" />
                       {egg.name}
                     </Link>
@@ -219,7 +219,7 @@ export default function EggsPage() {
                   <td className="px-4 py-3 text-right">
                     <button
                       onClick={() => { if (confirm(`Supprimer l'egg "${egg.name}" ?`)) deleteMutation.mutate(egg.id) }}
-                      className="p-1.5 text-muted hover:text-red-400 rounded-md hover:bg-border transition-colors"
+                      className="p-1.5 text-gray-400 hover:text-red-400 rounded-md hover:bg-white/5 transition-colors"
                       title="Supprimer"
                     >
                       <Trash2 size={14} />
