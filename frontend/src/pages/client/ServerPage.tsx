@@ -340,6 +340,7 @@ export default function ServerPage() {
   const [reconnectTick, setReconnectTick] = useState(0)
   const [eulaRequired, setEulaRequired] = useState(false)
   const [eulaAccepting, setEulaAccepting] = useState(false)
+  const [stopRequested, setStopRequested] = useState(false)
 
   const wsRef = useRef<WebSocket | null>(null)
   const consoleRef = useRef<HTMLDivElement>(null)
@@ -377,7 +378,11 @@ export default function ServerPage() {
         }
         else if (event === 'install output' && args[0]) setInstallLines(p => [...p.slice(-999), ansiToHtml(args[0].replace(ANSI_NON_COLOR, ''))])
         else if (event === 'install completed') { setInstallDone(true); queryClient.invalidateQueries({ queryKey: ['client', 'servers', id] }) }
-        else if (event === 'status' && args[0]) setStatus((args[0] === 'running' ? 'online' : args[0]) as ServerStatus)
+        else if (event === 'status' && args[0]) {
+          const s = (args[0] === 'running' ? 'online' : args[0]) as ServerStatus
+          setStatus(s)
+          if (s === 'offline') setStopRequested(false)
+        }
         else if (event === 'stats' && args[0]) { try { setStats(JSON.parse(args[0])) } catch {} }
       }
       ws.onerror = () => {}
@@ -442,10 +447,7 @@ export default function ServerPage() {
 
   const displayAddress = `${server.allocationIpAlias ?? server.allocationIp ?? '—'}:${server.allocationPort ?? '—'}`
   const cfg = STATUS_CFG[status]
-  const canStart   = !connected || status === 'offline'
-  const canStop    = !connected || status === 'online' || status === 'starting'
-  const canRestart = !connected || status === 'online'
-  const canKill    = !connected || ['online', 'starting', 'stopping'].includes(status)
+  const isRunning = status === 'online' || status === 'starting'
 
   // Compute stat percentages
   const cpuPercent  = stats ? Math.min(stats.cpu_absolute, 100) : 0
@@ -705,30 +707,38 @@ export default function ServerPage() {
 
             {/* Power actions */}
             <div className="shrink-0 flex items-center gap-2 flex-wrap">
-              <button
-                onClick={() => power('start')} disabled={!canStart}
-                className="flex items-center gap-1.5 px-4 py-2 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 text-white text-sm font-semibold rounded-lg transition-all shadow-sm"
-              >
-                <Play size={13} /> Start
-              </button>
-              <button
-                onClick={() => power('restart')} disabled={!canRestart}
-                className="flex items-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-500 disabled:opacity-40 text-white text-sm font-semibold rounded-lg transition-all shadow-sm"
-              >
-                <RotateCcw size={13} /> Restart
-              </button>
-              <button
-                onClick={() => power('stop')} disabled={!canStop}
-                className="flex items-center gap-1.5 px-4 py-2 bg-white/[0.08] hover:bg-white/[0.14] disabled:opacity-40 text-slate-200 text-sm font-semibold rounded-lg border border-white/[0.08] transition-all"
-              >
-                <Square size={13} /> Stop
-              </button>
-              <button
-                onClick={() => power('kill')} disabled={!canKill}
-                className="flex items-center gap-1.5 px-4 py-2 bg-red-600 hover:bg-red-500 disabled:opacity-40 text-white text-sm font-semibold rounded-lg transition-all shadow-sm"
-              >
-                <Zap size={13} /> Kill
-              </button>
+              {status === 'offline' ? (
+                <button
+                  onClick={() => power('start')}
+                  className="flex items-center gap-1.5 px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-semibold rounded-lg transition-all shadow-sm"
+                >
+                  <Play size={13} /> Start
+                </button>
+              ) : (
+                <>
+                  <button
+                    onClick={() => power('restart')} disabled={status !== 'online'}
+                    className="flex items-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-500 disabled:opacity-40 text-white text-sm font-semibold rounded-lg transition-all shadow-sm"
+                  >
+                    <RotateCcw size={13} /> Restart
+                  </button>
+                  {stopRequested || status === 'stopping' ? (
+                    <button
+                      onClick={() => power('kill')}
+                      className="flex items-center gap-1.5 px-4 py-2 bg-red-600 hover:bg-red-500 text-white text-sm font-semibold rounded-lg transition-all shadow-sm"
+                    >
+                      <Zap size={13} /> Kill
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() => { setStopRequested(true); power('stop') }} disabled={!isRunning}
+                      className="flex items-center gap-1.5 px-4 py-2 bg-white/[0.08] hover:bg-white/[0.14] disabled:opacity-40 text-slate-200 text-sm font-semibold rounded-lg border border-white/[0.08] transition-all"
+                    >
+                      <Square size={13} /> Stop
+                    </button>
+                  )}
+                </>
+              )}
 
               <div className="ml-auto flex items-center gap-2">
                 {wsError ? (
