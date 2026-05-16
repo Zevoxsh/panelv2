@@ -132,7 +132,7 @@ function EditorModal({ serverId, path, onClose }: { serverId: string; path: stri
   const segments = path.split('/').filter(Boolean)
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col" style={{ background: '#0b0f1a' }}>
+    <div className="absolute inset-0 z-50 flex flex-col" style={{ background: '#0b0f1a' }}>
 
       {/* ── Top bar ── */}
       <div
