@@ -382,11 +382,15 @@ export async function serversRoutes(app: FastifyInstance) {
       })
 
       socket.on('message', (data: Buffer) => {
+        let event = '(parse error)'
         try {
           const msg = JSON.parse(data.toString())
+          event = msg.event ?? '(no event)'
           if (msg.event === 'auth') return
         } catch {}
+        app.log.info({ serverId: server.id, event, wingsReady: wings.readyState }, 'Browser→Wings msg')
         if (wings.readyState === WsClient.OPEN) wings.send(data.toString())
+        else app.log.warn({ serverId: server.id, wingsReady: wings.readyState }, 'Wings not OPEN, msg dropped')
       })
 
       socket.on('close', () => teardown(1000))
