@@ -41,6 +41,7 @@ type Tab =
 
 const BASE_TABS: { key: Tab; label: string }[] = [
   { key: 'console',   label: 'Console' },
+  // MC-specific tabs injected here dynamically
   { key: 'files',     label: 'Files' },
   { key: 'databases', label: 'Databases' },
   { key: 'schedules', label: 'Schedules' },
@@ -460,11 +461,16 @@ export default function ServerPage() {
   const displayAddress = `${server.allocationIpAlias ?? server.allocationIp ?? '—'}:${server.allocationPort ?? '—'}`
   const cfg = STATUS_CFG[status]
   const mcType = detectMcType(server.eggName)
+  // Insert MC tabs right after Console (index 0)
+  const mcTabs: { key: Tab; label: string }[] = [
+    ...(mcType.isMc     ? [{ key: 'players' as Tab, label: 'Players' }] : []),
+    ...(mcType.isPlugin ? [{ key: 'plugins' as Tab, label: 'Plugins' }] : []),
+    ...(mcType.isMod    ? [{ key: 'mods'    as Tab, label: 'Mods'    }] : []),
+  ]
   const visibleTabs: { key: Tab; label: string }[] = [
-    ...BASE_TABS,
-    ...(mcType.isMc     ? [{ key: 'players' as Tab, label: 'Players' }]        : []),
-    ...(mcType.isPlugin ? [{ key: 'plugins' as Tab, label: 'Plugins' }]        : []),
-    ...(mcType.isMod    ? [{ key: 'mods'    as Tab, label: 'Mods' }]           : []),
+    BASE_TABS[0],
+    ...mcTabs,
+    ...BASE_TABS.slice(1),
   ]
   const pluginLoader = mcType.isPlugin
     ? /paper|purpur/.test((server.eggName ?? '').toLowerCase()) ? 'paper' : 'spigot'

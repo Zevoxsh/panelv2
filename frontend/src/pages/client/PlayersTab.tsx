@@ -119,15 +119,15 @@ export default function PlayersTab({ lines, onSendCommand, connected, status }: 
       for (const raw of newLines) {
         const line = stripHtml(raw)
 
-        // Join: "PlayerName joined the game"
-        const join = line.match(/\]\s*(\w{2,16}) joined the game/)
+        // Join: "[HH:MM:SS INFO]: PlayerName joined the game"
+        const join = line.match(/(\w{2,16}) joined the game/)
         if (join) { next.add(join[1]); continue }
 
-        // Leave: "PlayerName left the game"
-        const leave = line.match(/\]\s*(\w{2,16}) left the game/)
+        // Leave: "[HH:MM:SS INFO]: PlayerName left the game"
+        const leave = line.match(/(\w{2,16}) left the game/)
         if (leave) { next.delete(leave[1]); continue }
 
-        // Kick/ban results: "Kicked/Banned PlayerName"
+        // Kicked
         const kicked = line.match(/Kicked\s+(\w{2,16})/)
         if (kicked) { next.delete(kicked[1]); continue }
 
