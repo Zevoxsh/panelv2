@@ -51,7 +51,7 @@ export default function LoginPage() {
           >
             <Layers size={24} className="text-white" />
           </div>
-          <h1 className="text-white text-2xl font-bold tracking-tight">GamePanel</h1>
+          <h1 className="text-white text-2xl font-bold tracking-tight">Paxcia Panel</h1>
           <p className="text-slate-500 text-sm mt-1">Sign in to manage your servers</p>
         </div>
 

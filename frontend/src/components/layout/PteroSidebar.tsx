@@ -50,7 +50,7 @@ export default function PteroSidebar() {
         >
           <Layers size={15} className="text-white" />
         </div>
-        <span className="font-bold text-white tracking-tight text-[15px]">GamePanel</span>
+        <span className="font-bold text-white tracking-tight text-[15px]">Paxcia Panel</span>
       </div>
 
       {/* ── Nav ── */}

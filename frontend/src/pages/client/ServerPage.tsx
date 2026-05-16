@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useParams, Link, useSearchParams } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { api, wsUrl } from '../../lib/api'
+import { ansiToHtml } from '../../lib/ansi'
 import {
   ChevronLeft, Play, RotateCcw, Square, Zap,
   Send, Loader2, CheckCircle2, Cpu, MemoryStick, HardDrive, Wifi,
@@ -54,7 +55,8 @@ const STATUS_CFG: Record<ServerStatus, { dot: string; badge: string; label: stri
   offline:  { dot: 'bg-slate-600', badge: 'bg-white/[0.06] text-slate-400 border-white/[0.08]', label: 'Offline' },
 }
 
-const ANSI_STRIP = /\x1B\[[0-9;]*[mGKHF]/g
+// Strip non-color ANSI codes (cursor movement, erase, etc.) before color parsing
+const ANSI_NON_COLOR = /\x1B\[[0-9;]*[ABCDEFGJKST]|\x1B\[[0-9;]*[HfRu]|\r/g
 
 function fmtGiB(bytes: number) { return (bytes / 1073741824).toFixed(2) }
 function fmtMiB(mib: number)   { return (mib / 1024).toFixed(1) + ' GiB' }
@@ -287,8 +289,8 @@ export default function ServerPage() {
         try { msg = JSON.parse(e.data) } catch { return }
         const { event, args } = msg
         if (event === 'connected') { retryDelay = 3000; setConnected(true) }
-        else if (event === 'console output' && args[0]) setLines(p => [...p.slice(-999), args[0].replace(ANSI_STRIP, '')])
-        else if (event === 'install output' && args[0]) setInstallLines(p => [...p.slice(-999), args[0].replace(ANSI_STRIP, '')])
+        else if (event === 'console output' && args[0]) setLines(p => [...p.slice(-999), ansiToHtml(args[0].replace(ANSI_NON_COLOR, ''))])
+        else if (event === 'install output' && args[0]) setInstallLines(p => [...p.slice(-999), ansiToHtml(args[0].replace(ANSI_NON_COLOR, ''))])
         else if (event === 'install completed') { setInstallDone(true); queryClient.invalidateQueries({ queryKey: ['client', 'servers', id] }) }
         else if (event === 'status' && args[0]) setStatus((args[0] === 'running' ? 'online' : args[0]) as ServerStatus)
         else if (event === 'stats' && args[0]) { try { setStats(JSON.parse(args[0])) } catch {} }
@@ -431,10 +433,10 @@ export default function ServerPage() {
                 </span>
               )}
             </div>
-            <div ref={installRef} className="flex-1 overflow-y-auto p-4 font-mono text-xs text-emerald-300 leading-[1.7]">
+            <div ref={installRef} className="flex-1 overflow-y-auto p-4 font-mono text-xs leading-[1.8] text-slate-300">
               {installLines.length === 0
                 ? <span className="text-slate-700">Waiting for install output…</span>
-                : installLines.map((line, i) => <div key={i} className="whitespace-pre-wrap break-all">{line || ' '}</div>)}
+                : installLines.map((line, i) => <div key={i} className="whitespace-pre-wrap break-all" dangerouslySetInnerHTML={{ __html: line || ' ' }} />)}
             </div>
           </div>
         </div>
@@ -548,28 +550,30 @@ export default function ServerPage() {
             </div>
 
             {/* Terminal */}
-            <div className="panel rounded-xl overflow-hidden flex flex-col flex-1 min-h-0" style={{ background: 'rgba(2,5,14,0.90)' }}>
-              {/* Terminal header */}
-              <div className="flex items-center gap-1.5 px-4 py-2.5 border-b border-white/[0.05] shrink-0">
-                <div className="flex gap-1.5">
-                  <span className="w-2.5 h-2.5 rounded-full bg-red-500/50" />
-                  <span className="w-2.5 h-2.5 rounded-full bg-yellow-500/50" />
-                  <span className="w-2.5 h-2.5 rounded-full bg-green-500/50" />
-                </div>
-                <span className="text-slate-700 text-[11px] ml-2 font-mono">console</span>
+            <div className="panel rounded-xl overflow-hidden flex flex-col flex-1 min-h-0" style={{ background: 'rgba(2,5,14,0.92)' }}>
+              {/* Terminal header — minimal, no macOS dots */}
+              <div className="flex items-center justify-between px-4 py-2 border-b border-white/[0.05] shrink-0">
+                <span className="text-slate-700 text-[11px] font-mono tracking-wide">CONSOLE</span>
+                <span className="text-[11px] text-slate-700 font-mono">{lines.length} lines</span>
               </div>
 
               {/* Output */}
               <div
                 ref={consoleRef}
-                className="flex-1 overflow-y-auto px-4 py-3 font-mono text-xs text-emerald-300 leading-[1.7]"
+                className="flex-1 overflow-y-auto px-4 py-3 font-mono text-xs leading-[1.8] text-slate-300"
               >
                 {lines.length === 0 ? (
                   <span className="text-slate-700">
                     {connected ? 'Waiting for output…' : 'Connecting to daemon…'}
                   </span>
                 ) : (
-                  lines.map((line, i) => <div key={i} className="whitespace-pre-wrap break-all">{line || ' '}</div>)
+                  lines.map((line, i) => (
+                    <div
+                      key={i}
+                      className="whitespace-pre-wrap break-all"
+                      dangerouslySetInnerHTML={{ __html: line || ' ' }}
+                    />
+                  ))
                 )}
               </div>
 
