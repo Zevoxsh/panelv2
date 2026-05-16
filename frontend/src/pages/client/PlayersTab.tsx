@@ -67,7 +67,7 @@ function PlayerCard({ name, onSendCommand }: { name: string; onSendCommand: (cmd
 
         {open && (
           <div
-            className="absolute bottom-full mb-1.5 left-0 right-0 z-20 rounded-xl overflow-hidden py-1 min-w-[160px]"
+            className="absolute top-full mt-1.5 left-0 right-0 z-50 rounded-xl py-1 min-w-[160px] max-h-64 overflow-y-auto"
             style={{ background: 'rgba(10,14,28,0.97)', border: '1px solid rgba(255,255,255,0.10)', boxShadow: '0 16px 48px -8px rgba(0,0,0,0.8)' }}
           >
             {ACTIONS.map((a, i) =>
