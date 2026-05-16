@@ -19,6 +19,9 @@ import EggDetailPage from './pages/admin/EggDetailPage'
 import ServersAdminPage from './pages/admin/ServersAdminPage'
 import NewServerPage from './pages/admin/NewServerPage'
 import ServerDetailAdminPage from './pages/admin/ServerDetailAdminPage'
+import MountsPage from './pages/admin/MountsPage'
+import SettingsPage from './pages/admin/SettingsPage'
+import DatabasesAdminPage from './pages/admin/DatabasesAdminPage'
 import ServerPage from './pages/client/ServerPage'
 
 function RequireAuth({ adminOnly = false }: { adminOnly?: boolean }) {
@@ -69,6 +72,9 @@ function AppRoutes() {
           <Route path="/admin/servers" element={<ServersAdminPage />} />
           <Route path="/admin/servers/new" element={<NewServerPage />} />
           <Route path="/admin/servers/:id" element={<ServerDetailAdminPage />} />
+          <Route path="/admin/mounts" element={<MountsPage />} />
+          <Route path="/admin/settings" element={<SettingsPage />} />
+          <Route path="/admin/databases" element={<DatabasesAdminPage />} />
         </Route>
       </Route>
 

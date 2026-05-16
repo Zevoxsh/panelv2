@@ -13,6 +13,13 @@ import { nodesRoutes } from './modules/nodes/nodes.routes.js'
 import { eggsRoutes } from './modules/eggs/eggs.routes.js'
 import { serversRoutes } from './modules/servers/servers.routes.js'
 import { serversFilesRoutes } from './modules/servers/servers.files.routes.js'
+import { serversDatabasesRoutes } from './modules/servers/servers.databases.routes.js'
+import { serversBackupsRoutes } from './modules/servers/servers.backups.routes.js'
+import { serversSchedulesRoutes } from './modules/servers/servers.schedules.routes.js'
+import { serversSubusersRoutes } from './modules/servers/servers.subusers.routes.js'
+import { serversNetworkRoutes } from './modules/servers/servers.network.routes.js'
+import { serversActivityRoutes } from './modules/servers/servers.activity.routes.js'
+import { mountsRoutes } from './modules/mounts/mounts.routes.js'
 import { remoteRoutes } from './modules/remote/remote.routes.js'
 
 export function buildApp() {
@@ -43,6 +50,13 @@ export function buildApp() {
   app.register(eggsRoutes)
   app.register(serversRoutes)
   app.register(serversFilesRoutes)
+  app.register(serversDatabasesRoutes)
+  app.register(serversBackupsRoutes)
+  app.register(serversSchedulesRoutes)
+  app.register(serversSubusersRoutes)
+  app.register(serversNetworkRoutes)
+  app.register(serversActivityRoutes)
+  app.register(mountsRoutes)
   app.register(remoteRoutes)
 
   app.get('/health', async () => ({ status: 'ok' }))

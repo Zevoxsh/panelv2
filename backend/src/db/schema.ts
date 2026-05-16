@@ -123,6 +123,95 @@ export const serverVariables = pgTable('server_variables', {
   value: varchar('value', { length: 255 }).notNull().default(''),
 })
 
+// ── Server databases ──────────────────────────────────────────────────────────
+export const serverDatabases = pgTable('server_databases', {
+  id:        uuid('id').primaryKey().defaultRandom(),
+  serverId:  uuid('server_id').notNull().references(() => servers.id, { onDelete: 'cascade' }),
+  name:      varchar('name', { length: 100 }).notNull(),
+  username:  varchar('username', { length: 100 }).notNull(),
+  password:  varchar('password', { length: 255 }).notNull(),
+  remote:    varchar('remote', { length: 100 }).notNull().default('%'),
+  host:      varchar('host', { length: 255 }).notNull().default('127.0.0.1'),
+  port:      integer('port').notNull().default(3306),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+})
+
+// ── Backups ───────────────────────────────────────────────────────────────────
+export const backups = pgTable('backups', {
+  id:         uuid('id').primaryKey().defaultRandom(),
+  serverId:   uuid('server_id').notNull().references(() => servers.id, { onDelete: 'cascade' }),
+  name:       varchar('name', { length: 255 }).notNull(),
+  bytes:      integer('bytes').notNull().default(0),
+  completed:  boolean('completed').notNull().default(false),
+  successful: boolean('successful').notNull().default(true),
+  checksum:   varchar('checksum', { length: 255 }),
+  createdAt:  timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+})
+
+// ── Schedules ─────────────────────────────────────────────────────────────────
+export const schedules = pgTable('schedules', {
+  id:              uuid('id').primaryKey().defaultRandom(),
+  serverId:        uuid('server_id').notNull().references(() => servers.id, { onDelete: 'cascade' }),
+  name:            varchar('name', { length: 255 }).notNull(),
+  cronMinute:      varchar('cron_minute', { length: 20 }).notNull().default('*/5'),
+  cronHour:        varchar('cron_hour', { length: 20 }).notNull().default('*'),
+  cronDayOfMonth:  varchar('cron_day_of_month', { length: 20 }).notNull().default('*'),
+  cronMonth:       varchar('cron_month', { length: 20 }).notNull().default('*'),
+  cronDayOfWeek:   varchar('cron_day_of_week', { length: 20 }).notNull().default('*'),
+  isActive:        boolean('is_active').notNull().default(true),
+  lastRunAt:       timestamp('last_run_at', { withTimezone: true }),
+  createdAt:       timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+})
+
+export const scheduleTaskActionEnum = pgEnum('schedule_task_action', ['command', 'power', 'backup'])
+export const scheduleTasks = pgTable('schedule_tasks', {
+  id:          uuid('id').primaryKey().defaultRandom(),
+  scheduleId:  uuid('schedule_id').notNull().references(() => schedules.id, { onDelete: 'cascade' }),
+  sequence:    integer('sequence').notNull().default(1),
+  action:      scheduleTaskActionEnum('action').notNull(),
+  payload:     varchar('payload', { length: 255 }).notNull().default(''),
+  timeOffset:  integer('time_offset').notNull().default(0),
+  createdAt:   timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+})
+
+// ── Server sub-users ──────────────────────────────────────────────────────────
+export const serverSubusers = pgTable('server_subusers', {
+  id:          uuid('id').primaryKey().defaultRandom(),
+  serverId:    uuid('server_id').notNull().references(() => servers.id, { onDelete: 'cascade' }),
+  userId:      uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  permissions: text('permissions').array().notNull().default([]),
+  createdAt:   timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [unique().on(t.serverId, t.userId)])
+
+// ── Secondary allocations per server ─────────────────────────────────────────
+export const serverAllocations = pgTable('server_allocations', {
+  serverId:     uuid('server_id').notNull().references(() => servers.id, { onDelete: 'cascade' }),
+  allocationId: uuid('allocation_id').notNull().references(() => allocations.id, { onDelete: 'cascade' }),
+})
+
+// ── Activity logs ─────────────────────────────────────────────────────────────
+export const activityLogs = pgTable('activity_logs', {
+  id:        uuid('id').primaryKey().defaultRandom(),
+  serverId:  uuid('server_id').references(() => servers.id, { onDelete: 'cascade' }),
+  userId:    uuid('user_id').references(() => users.id, { onDelete: 'set null' }),
+  event:     varchar('event', { length: 100 }).notNull(),
+  metadata:  jsonb('metadata').$type<Record<string, unknown>>(),
+  ip:        varchar('ip', { length: 45 }),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+})
+
+// ── Admin mounts ──────────────────────────────────────────────────────────────
+export const mounts = pgTable('mounts', {
+  id:            uuid('id').primaryKey().defaultRandom(),
+  name:          varchar('name', { length: 100 }).notNull().unique(),
+  description:   varchar('description', { length: 500 }),
+  source:        varchar('source', { length: 255 }).notNull(),
+  target:        varchar('target', { length: 255 }).notNull(),
+  readOnly:      boolean('read_only').notNull().default(false),
+  userMountable: boolean('user_mountable').notNull().default(false),
+  createdAt:     timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+})
+
 export type User = typeof users.$inferSelect
 export type NewUser = typeof users.$inferInsert
 export type ApiKey = typeof apiKeys.$inferSelect

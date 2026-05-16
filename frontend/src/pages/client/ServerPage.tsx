@@ -7,6 +7,12 @@ import {
   Send, Loader2, CheckCircle2, Cpu, MemoryStick, HardDrive, Wifi,
 } from 'lucide-react'
 import FileManagerTab from './FileManagerTab'
+import DatabasesTab from './DatabasesTab'
+import BackupsTab from './BackupsTab'
+import SchedulesTab from './SchedulesTab'
+import SubUsersTab from './SubUsersTab'
+import NetworkTab from './NetworkTab'
+import ActivityTab from './ActivityTab'
 
 interface ServerDetail {
   id: string; name: string; description: string | null
@@ -619,18 +625,45 @@ export default function ServerPage() {
         </div>
       )}
 
-      {/* ══ COMING SOON TABS ═════════════════════════════════════════════════ */}
-      {server.installed && !['console', 'files', 'startup', 'settings'].includes(tab) && (
-        <div className="flex-1 flex items-center justify-center mx-6 mt-4 mb-4">
-          <div className="panel rounded-xl px-12 py-10 text-center">
-            <div className="w-10 h-10 rounded-xl mx-auto mb-3 flex items-center justify-center panel-solid">
-              <span className="text-slate-500 text-lg">🚧</span>
-            </div>
-            <p className="text-slate-300 font-medium text-sm">
-              {TABS.find(t => t.key === tab)?.label}
-            </p>
-            <p className="text-slate-600 text-xs mt-1">Coming soon</p>
-          </div>
+      {/* ══ DATABASES TAB ════════════════════════════════════════════════════ */}
+      {server.installed && tab === 'databases' && (
+        <div className="flex-1 overflow-y-auto">
+          <DatabasesTab serverId={server.id} />
+        </div>
+      )}
+
+      {/* ══ BACKUPS TAB ══════════════════════════════════════════════════════ */}
+      {server.installed && tab === 'backups' && (
+        <div className="flex-1 overflow-y-auto">
+          <BackupsTab serverId={server.id} />
+        </div>
+      )}
+
+      {/* ══ SCHEDULES TAB ════════════════════════════════════════════════════ */}
+      {server.installed && tab === 'schedules' && (
+        <div className="flex-1 overflow-y-auto">
+          <SchedulesTab serverId={server.id} />
+        </div>
+      )}
+
+      {/* ══ USERS TAB ════════════════════════════════════════════════════════ */}
+      {server.installed && tab === 'users' && (
+        <div className="flex-1 overflow-y-auto">
+          <SubUsersTab serverId={server.id} />
+        </div>
+      )}
+
+      {/* ══ NETWORK TAB ══════════════════════════════════════════════════════ */}
+      {server.installed && tab === 'network' && (
+        <div className="flex-1 overflow-y-auto">
+          <NetworkTab serverId={server.id} />
+        </div>
+      )}
+
+      {/* ══ ACTIVITY TAB ═════════════════════════════════════════════════════ */}
+      {server.installed && tab === 'activity' && (
+        <div className="flex-1 overflow-y-auto">
+          <ActivityTab serverId={server.id} />
         </div>
       )}
 
