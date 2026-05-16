@@ -376,7 +376,7 @@ export async function serversRoutes(app: FastifyInstance) {
             }
             return
           }
-          // install output / completed are forwarded as-is to the client
+          app.log.info({ serverId: server.id, event: msg.event }, 'Wings→Browser msg')
         } catch { /* malformed frame */ }
         if (socket.readyState === WsClient.OPEN) socket.send(raw)
       })
