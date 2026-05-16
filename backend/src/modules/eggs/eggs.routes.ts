@@ -26,6 +26,7 @@ const ptdlImportSchema = z.object({
     config: z.object({
       stop: z.string().default('^C'),
       startup: z.string().default('{}'),
+      files: z.any().optional(),
     }).passthrough(),
     scripts: z.object({
       installation: z.object({
@@ -55,6 +56,11 @@ export async function eggsRoutes(app: FastifyInstance) {
     // docker_images map from egg JSON — use as-is, fall back to the selected image
     const dockerImages: Record<string, string> = (data as any).docker_images ?? { Default: dockerImage }
 
+    // config.files is stored as raw JSON string (Wings format)
+    const configFiles = typeof data.config.files === 'string'
+      ? data.config.files
+      : (data.config.files ? JSON.stringify(data.config.files) : '')
+
     const egg = await createEgg({
       name: data.name,
       description: data.description || undefined,
@@ -66,6 +72,7 @@ export async function eggsRoutes(app: FastifyInstance) {
       installScript: install?.script ?? '',
       installContainer: install?.container ?? 'ghcr.io/ptero-eggs/installers:alpine',
       installEntrypoint: install?.entrypoint ?? 'ash',
+      configFiles,
     })
 
     for (const v of data.variables) {

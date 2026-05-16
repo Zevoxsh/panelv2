@@ -11,6 +11,7 @@ export const createEggSchema = z.object({
   installScript: z.string().default(''),
   installContainer: z.string().max(255).default('ghcr.io/ptero-eggs/installers:alpine'),
   installEntrypoint: z.string().max(100).default('ash'),
+  configFiles: z.string().default(''),
 })
 
 export const updateEggSchema = createEggSchema.partial()

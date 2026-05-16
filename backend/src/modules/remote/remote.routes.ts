@@ -1,10 +1,31 @@
 import type { FastifyInstance } from 'fastify'
 import { db } from '../../db/index.js'
 import { nodes, servers, allocations, eggs } from '../../db/schema.js'
-import { eq, and } from 'drizzle-orm'
+import { eq, and, inArray } from 'drizzle-orm'
 import { buildWingsServerPayload, markInstalled, getServerVariables } from '../servers/servers.service.js'
 
-function buildProcessConfiguration(stopCommand: string, startupDoneString: string) {
+function buildConfigs(configFiles: string): object[] {
+  if (!configFiles) return []
+  let parsed: Record<string, any>
+  try {
+    parsed = typeof configFiles === 'string' ? JSON.parse(configFiles) : configFiles
+  } catch {
+    return []
+  }
+
+  // Return find values with template variables intact.
+  // Wings v1.12 substitutes {{server.build.default.port}} / {{server.build.default.ip}}
+  // itself from the server's allocation data stored in memory.
+  return Object.entries(parsed).map(([file, cfg]) => {
+    return { file, parser: cfg.parser ?? 'properties', find: cfg.find ?? {}, replace: [] }
+  })
+}
+
+function buildProcessConfiguration(
+  stopCommand: string,
+  startupDoneString: string,
+  configFiles: string,
+) {
   const stopType = stopCommand === '^C' ? 'signal' : 'command'
   const stopValue = stopCommand === '^C' ? 'SIGINT' : stopCommand
 
@@ -15,7 +36,7 @@ function buildProcessConfiguration(stopCommand: string, startupDoneString: strin
       strip_ansi: false,
     },
     stop: { type: stopType, value: stopValue },
-    configs: [],
+    configs: buildConfigs(configFiles),
     logs: [],
   }
 }
@@ -56,7 +77,14 @@ export async function remoteRoutes(app: FastifyInstance) {
     const data = await Promise.all(
       nodeServers.map(async (s) => {
         const payload = await buildWingsServerPayload(s.id)
-        return payload ? { uuid: s.id, settings: payload.settings } : null
+        if (!payload) return null
+        const [egg] = await db.select().from(eggs).where(eq(eggs.id, s.eggId))
+        const processConfig = buildProcessConfiguration(
+          egg?.stopCommand ?? 'stop',
+          egg?.startupDoneString ?? ']',
+          egg?.configFiles ?? '',
+        )
+        return { uuid: s.id, settings: payload.settings, process_configuration: processConfig }
       })
     )
 
@@ -97,17 +125,18 @@ export async function remoteRoutes(app: FastifyInstance) {
     const payload = await buildWingsServerPayload(uuid)
     if (!payload) return wingsError(reply, 404, 'NotFound', 'Server not found')
 
-    // Fetch stop command and startup done string from egg
     const [server] = await db.select().from(servers).where(eq(servers.id, uuid))
     if (!server) return wingsError(reply, 404, 'NotFound', 'Server not found')
 
     const [egg] = await db.select().from(eggs).where(eq(eggs.id, server.eggId))
+
     const stopCommand = egg?.stopCommand ?? 'stop'
     const startupDoneString = egg?.startupDoneString ?? ']'
+    const configFiles = egg?.configFiles ?? ''
 
     return reply.send({
       settings: payload.settings,
-      process_configuration: buildProcessConfiguration(stopCommand, startupDoneString),
+      process_configuration: buildProcessConfiguration(stopCommand, startupDoneString, configFiles),
     })
   })
 
@@ -121,6 +150,10 @@ export async function remoteRoutes(app: FastifyInstance) {
     if (body.successful !== false) {
       await markInstalled(uuid)
     }
+    return reply.code(204).send()
+  })
+
+  app.post('/api/remote/activity', { preHandler: requireNodeToken }, async (_req, reply) => {
     return reply.code(204).send()
   })
 

@@ -18,7 +18,8 @@ export async function createEgg(dto: CreateEggDto) {
 }
 
 export async function updateEgg(id: string, dto: UpdateEggDto) {
-  const [egg] = await db.update(eggs).set({ ...dto, updatedAt: new Date() })
+  const patch = Object.fromEntries(Object.entries(dto).filter(([, v]) => v !== undefined))
+  const [egg] = await db.update(eggs).set({ ...patch, updatedAt: new Date() })
     .where(eq(eggs.id, id)).returning()
   return egg ?? null
 }

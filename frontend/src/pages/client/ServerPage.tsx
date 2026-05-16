@@ -301,10 +301,12 @@ export default function ServerPage() {
   const [command, setCommand] = useState('')
   const [connected, setConnected] = useState(false)
   const [wsError, setWsError] = useState<string | null>(null)
+  const [reconnectTick, setReconnectTick] = useState(0)
 
   const wsRef = useRef<WebSocket | null>(null)
   const consoleRef = useRef<HTMLDivElement>(null)
   const installRef = useRef<HTMLDivElement>(null)
+  const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const { data: server, isLoading } = useQuery<ServerDetail>({
     queryKey: ['client', 'servers', id],
@@ -330,59 +332,76 @@ export default function ServerPage() {
   }, [installLines])
 
   // WebSocket proxy connection (same-origin → panel → Wings)
-  // Connect even during install so we can stream install output
+  // Connect even during install so we can stream install output.
+  // Auto-reconnects on unexpected disconnect (not on permanent errors).
   useEffect(() => {
     if (!id || !server || server?.suspended) return
 
-    const url = wsUrl(`/client/servers/${id}/ws`)
+    let retryDelay = 3000
+    let destroyed = false
 
-    setWsError(null)
-    setConnected(false)
+    function connect() {
+      if (destroyed) return
+      const url = wsUrl(`/client/servers/${id}/ws`)
+      setWsError(null)
+      setConnected(false)
 
-    const ws = new WebSocket(url)
-    wsRef.current = ws
+      const ws = new WebSocket(url)
+      wsRef.current = ws
 
-    ws.onmessage = (e) => {
-      let msg: { event: string; args: string[] }
-      try { msg = JSON.parse(e.data) } catch { return }
-      const { event, args } = msg
+      ws.onmessage = (e) => {
+        let msg: { event: string; args: string[] }
+        try { msg = JSON.parse(e.data) } catch { return }
+        const { event, args } = msg
 
-      if (event === 'connected') {
-        setConnected(true)
-      } else if (event === 'console output' && args[0]) {
-        const line = args[0].replace(ANSI_STRIP, '')
-        setLines(prev => [...prev.slice(-999), line])
-      } else if (event === 'install output' && args[0]) {
-        const line = args[0].replace(ANSI_STRIP, '')
-        setInstallLines(prev => [...prev.slice(-999), line])
-      } else if (event === 'install completed') {
-        setInstallDone(true)
-        // Refresh server data so installed=true propagates immediately
-        queryClient.invalidateQueries({ queryKey: ['client', 'servers', id] })
-      } else if (event === 'status' && args[0]) {
-        setStatus(args[0] as ServerStatus)
-      } else if (event === 'stats' && args[0]) {
-        try { setStats(JSON.parse(args[0])) } catch {}
+        if (event === 'connected') {
+          retryDelay = 3000
+          setConnected(true)
+        } else if (event === 'console output' && args[0]) {
+          const line = args[0].replace(ANSI_STRIP, '')
+          setLines(prev => [...prev.slice(-999), line])
+        } else if (event === 'install output' && args[0]) {
+          const line = args[0].replace(ANSI_STRIP, '')
+          setInstallLines(prev => [...prev.slice(-999), line])
+        } else if (event === 'install completed') {
+          setInstallDone(true)
+          queryClient.invalidateQueries({ queryKey: ['client', 'servers', id] })
+        } else if (event === 'status' && args[0]) {
+          const raw = args[0]
+          setStatus((raw === 'running' ? 'online' : raw) as ServerStatus)
+        } else if (event === 'stats' && args[0]) {
+          try { setStats(JSON.parse(args[0])) } catch {}
+        }
+      }
+
+      ws.onerror = () => {}
+      ws.onclose = (e) => {
+        setConnected(false)
+        if (wsRef.current === ws) wsRef.current = null
+
+        // Permanent errors — don't retry
+        if (e.code === 4001) { setWsError('Non authentifié'); return }
+        if (e.code === 4003) { setWsError('Accès refusé'); return }
+        if (e.code === 4005) { setWsError('Wings a rejeté l\'authentification — vérifiez le token daemon'); return }
+        if (e.code === 4404) { setWsError('Serveur introuvable dans Wings — re-synchronisez depuis le panel admin'); return }
+
+        // Transient errors — auto-reconnect
+        setStatus('offline')
+        if (!destroyed) {
+          retryDelay = Math.min(retryDelay * 1.5, 30000)
+          reconnectTimerRef.current = setTimeout(connect, retryDelay)
+        }
       }
     }
 
-    ws.onerror = () => {}
-    ws.onclose = (e) => {
-      setConnected(false)
-      setStatus('offline')
-      if (e.code === 4001) setWsError('Non authentifié')
-      else if (e.code === 4003) setWsError('Accès refusé')
-      else if (e.code === 4005) setWsError('Wings a rejeté l\'authentification — vérifiez le token daemon')
-      else if (e.code === 4404) setWsError('Serveur introuvable dans Wings — re-synchronisez depuis le panel admin')
-      else if (e.code === 1011) setWsError('Impossible de joindre le daemon Wings')
-      else if (e.code !== 1000 && e.code !== 1001) setWsError(`Connexion perdue (${e.code})`)
-    }
+    connect()
 
     return () => {
-      ws.close()
-      if (wsRef.current === ws) wsRef.current = null
+      destroyed = true
+      if (reconnectTimerRef.current) clearTimeout(reconnectTimerRef.current)
+      if (wsRef.current) { wsRef.current.close(1000); wsRef.current = null }
     }
-  }, [id, server?.id, server?.suspended])
+  }, [id, server?.id, server?.suspended, reconnectTick])
 
   function sendCommand(e: React.FormEvent) {
     e.preventDefault()
@@ -391,9 +410,8 @@ export default function ServerPage() {
     setCommand('')
   }
 
-  function power(action: 'start' | 'stop' | 'restart' | 'kill') {
-    if (!wsRef.current || !connected) return
-    wsRef.current.send(JSON.stringify({ event: 'set state', args: [action] }))
+  async function power(action: 'start' | 'stop' | 'restart' | 'kill') {
+    await api.post(`/client/servers/${id}/power`, { action })
   }
 
   if (isLoading) {
@@ -414,10 +432,13 @@ export default function ServerPage() {
   }
 
   const displayAddress = `${server.allocationIpAlias ?? server.allocationIp ?? '—'}:${server.allocationPort ?? '—'}`
-  const canStart   = status === 'offline'
-  const canStop    = status === 'online' || status === 'starting'
-  const canRestart = status === 'online'
-  const canKill    = status === 'online' || status === 'starting' || status === 'stopping'
+  // Power actions use REST — they work regardless of WS state.
+  // If WS is disconnected we don't know the real status, so enable all actions.
+  const knownStatus = connected
+  const canStart   = !knownStatus || status === 'offline'
+  const canStop    = !knownStatus || status === 'online' || status === 'starting'
+  const canRestart = !knownStatus || status === 'online'
+  const canKill    = !knownStatus || status === 'online' || status === 'starting' || status === 'stopping'
 
   return (
     <div className="flex flex-col gap-4">
@@ -525,32 +546,40 @@ export default function ServerPage() {
         <>
           <div className="flex items-center gap-2 flex-wrap">
             <button onClick={() => power('start')}
-              disabled={!connected || !canStart}
+              disabled={!canStart}
               className="flex items-center gap-1.5 px-3 py-2 bg-green-600 hover:bg-green-500 disabled:opacity-40 disabled:cursor-not-allowed text-white text-sm rounded-lg transition-colors">
               <Play size={13} /> Démarrer
             </button>
             <button onClick={() => power('restart')}
-              disabled={!connected || !canRestart}
+              disabled={!canRestart}
               className="flex items-center gap-1.5 px-3 py-2 bg-blue-600 hover:bg-blue-500 disabled:opacity-40 disabled:cursor-not-allowed text-white text-sm rounded-lg transition-colors">
               <RotateCcw size={13} /> Redémarrer
             </button>
             <button onClick={() => power('stop')}
-              disabled={!connected || !canStop}
+              disabled={!canStop}
               className="flex items-center gap-1.5 px-3 py-2 bg-zinc-700 hover:bg-zinc-600 disabled:opacity-40 disabled:cursor-not-allowed text-white text-sm rounded-lg transition-colors">
               <Square size={13} /> Arrêter
             </button>
             <button onClick={() => power('kill')}
-              disabled={!connected || !canKill}
+              disabled={!canKill}
               className="flex items-center gap-1.5 px-3 py-2 bg-red-700 hover:bg-red-600 disabled:opacity-40 disabled:cursor-not-allowed text-white text-sm rounded-lg transition-colors">
               <Zap size={13} /> Kill
             </button>
 
-            <span className="text-xs ml-1">
-              {wsError
-                ? <span className="text-red-400">{wsError}</span>
-                : !connected
-                  ? <span className="text-muted">Connexion au daemon…</span>
-                  : null}
+            <span className="text-xs ml-1 flex items-center gap-2">
+              {wsError ? (
+                <>
+                  <span className="text-red-400">{wsError}</span>
+                  <button onClick={() => { setWsError(null); setReconnectTick(t => t + 1) }}
+                    className="text-xs text-primary-light hover:underline">
+                    Reconnecter
+                  </button>
+                </>
+              ) : !connected ? (
+                <span className="text-muted flex items-center gap-1">
+                  <Loader2 size={10} className="animate-spin" /> Connexion au daemon…
+                </span>
+              ) : null}
             </span>
           </div>
 

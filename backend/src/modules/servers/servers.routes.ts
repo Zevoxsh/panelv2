@@ -168,11 +168,20 @@ export async function serversRoutes(app: FastifyInstance) {
     const payload = await buildWingsServerPayload(id)
     if (!payload) return reply.code(500).send({ error: 'Impossible de construire le payload Wings' })
 
-    // Try POST first; if Wings already has it (returns 409 or 200), try PUT/PATCH to update
-    const res = await sendToWings(node, '/api/servers', 'POST', payload).catch(() => null)
-    if (!res) return reply.code(502).send({ error: 'Impossible de joindre Wings' })
+    // Check if Wings already knows the server (GET returns 200 = registered).
+    // If yes: Wings already syncs config on each start — no action needed.
+    // If no (404): POST to register + install.
+    const check = await sendToWings(node, `/api/servers/${id}`, 'GET').catch(() => null)
+    if (!check) return reply.code(502).send({ error: 'Impossible de joindre Wings' })
 
-    app.log.info({ serverId: id, status: res.status }, 'Server sync to Wings')
+    if (check.status === 404) {
+      const res = await sendToWings(node, '/api/servers', 'POST', payload).catch(() => null)
+      if (!res) return reply.code(502).send({ error: 'Impossible de joindre Wings' })
+      app.log.info({ serverId: id, status: res.status }, 'Server registered on Wings (was unknown)')
+    } else {
+      app.log.info({ serverId: id }, 'Server already known to Wings — config will sync on next start')
+    }
+
     return reply.code(204).send()
   })
 

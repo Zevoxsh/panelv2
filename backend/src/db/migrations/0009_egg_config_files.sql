@@ -1,0 +1,1 @@
+ALTER TABLE "eggs" ADD COLUMN IF NOT EXISTS "config_files" text NOT NULL DEFAULT '';

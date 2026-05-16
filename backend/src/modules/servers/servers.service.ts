@@ -173,7 +173,8 @@ export async function buildWingsServerPayload(serverId: string) {
       allocations: {
         force_outgoing_ip: false,
         default: { ip: alloc.ip, port: alloc.port },
-        mappings: {},
+        // mappings tells Wings which ports to publish in Docker for this server
+        mappings: { [alloc.ip]: [alloc.port] },
       },
     },
   }

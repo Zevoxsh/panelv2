@@ -80,6 +80,7 @@ export const eggs = pgTable('eggs', {
   installScript: text('install_script').notNull().default(''),
   installContainer: varchar('install_container', { length: 255 }).notNull().default(''),
   installEntrypoint: varchar('install_entrypoint', { length: 100 }).notNull().default('ash'),
+  configFiles: text('config_files').notNull().default(''),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 })
