@@ -214,23 +214,14 @@ export async function serversPluginsRoutes(app: FastifyInstance) {
         type SpigetResource = {
           name: string
           premium: boolean
-          file: { type: string; externalUrl?: string }
         }
         const info = await fetchJson<SpigetResource>(
           `https://api.spiget.org/v2/resources/${body.resourceId}`,
         )
         if (info.premium) {
-          return reply.code(422).send({ error: 'This is a premium plugin — purchase it on SpigotMC then upload the JAR manually.' })
+          return reply.code(422).send({ error: 'Plugin premium — achetez-le sur SpigotMC puis uploadez le JAR manuellement.' })
         }
-        if (info.file?.type === 'external') {
-          const ext = info.file.externalUrl ?? ''
-          if (!ext.endsWith('.jar')) {
-            return reply.code(422).send({ error: 'This plugin is hosted externally (e.g. GitHub) — download the JAR from the releases page and upload it manually.' })
-          }
-          downloadUrl = ext
-        } else {
-          downloadUrl = `https://api.spiget.org/v2/resources/${body.resourceId}/download`
-        }
+        downloadUrl = `https://api.spiget.org/v2/resources/${body.resourceId}/download`
         fileName = info.name
           ? `${info.name.replace(/[^a-zA-Z0-9._-]/g, '_')}.jar`
           : `spiget-${body.resourceId}.jar`
