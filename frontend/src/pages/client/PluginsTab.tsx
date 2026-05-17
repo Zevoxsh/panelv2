@@ -1,7 +1,7 @@
-import { useState, useRef } from 'react'
-import { useMutation } from '@tanstack/react-query'
+import { useState, useRef, useEffect } from 'react'
+import { useMutation, useQuery } from '@tanstack/react-query'
 import { api } from '../../lib/api'
-import { Search, Download, CheckCircle2, AlertCircle, Package, Puzzle } from 'lucide-react'
+import { Search, Download, CheckCircle2, AlertCircle, Package, Puzzle, Trash2, RefreshCw } from 'lucide-react'
 
 interface PluginResult {
   id: string
@@ -12,6 +12,19 @@ interface PluginResult {
   author: string
   iconUrl: string
   source: 'spiget' | 'modrinth'
+}
+
+interface InstallResult {
+  ok: boolean
+  fileName: string
+  versionNumber?: string
+  gameVersions?: string[]
+}
+
+interface InstalledFile {
+  name: string
+  size: number
+  modified: string
 }
 
 interface Props {
@@ -27,23 +40,50 @@ function fmtDownloads(n: number) {
   return String(n)
 }
 
+function fmtSize(bytes: number) {
+  if (bytes >= 1024 * 1024) return `${(bytes / 1024 / 1024).toFixed(1)} MB`
+  if (bytes >= 1024) return `${(bytes / 1024).toFixed(0)} KB`
+  return `${bytes} B`
+}
+
+function useGameVersion(serverId: string) {
+  const [gameVersion, setGameVersion] = useState<string | undefined>()
+  useEffect(() => {
+    api.get<{ variables: { envVariable: string | null; value: string }[] }>(
+      `/client/servers/${serverId}/startup`,
+    ).then(data => {
+      const v = data.variables.find(v =>
+        /minecraft.version|mc.version|server.version/i.test(v.envVariable ?? ''),
+      )
+      if (v?.value && /^\d+\.\d+/.test(v.value)) setGameVersion(v.value)
+    }).catch(() => {})
+  }, [serverId])
+  return gameVersion
+}
+
 function PluginCard({
-  plugin, serverId, folder, loader,
-}: { plugin: PluginResult; serverId: string; folder: string; loader?: string }) {
+  plugin, serverId, folder, loader, gameVersion,
+}: { plugin: PluginResult; serverId: string; folder: string; loader?: string; gameVersion?: string }) {
   const [state, setState] = useState<'idle' | 'loading' | 'done' | 'error'>('idle')
   const [errMsg, setErrMsg] = useState('')
+  const [installed, setInstalled] = useState<InstallResult | null>(null)
 
   const install = useMutation({
-    mutationFn: () => api.post(`/client/servers/${serverId}/plugins/install`, {
+    mutationFn: () => api.post<InstallResult>(`/client/servers/${serverId}/plugins/install`, {
       source: plugin.source,
       ...(plugin.source === 'spiget' ? { resourceId: plugin.id } : { projectId: plugin.id }),
       loader,
+      gameVersion,
       folder,
     }),
     onMutate: () => { setState('loading'); setErrMsg('') },
-    onSuccess: () => setState('done'),
+    onSuccess: (res) => { setState('done'); setInstalled(res) },
     onError: (e: any) => { setState('error'); setErrMsg(e.message ?? 'Install failed') },
   })
+
+  const versionMismatch = installed?.gameVersions?.length
+    && gameVersion
+    && !installed.gameVersions.some(v => v.startsWith(gameVersion.split('.').slice(0, 2).join('.')))
 
   return (
     <div className="panel rounded-xl p-4 flex flex-col gap-3">
@@ -94,12 +134,32 @@ function PluginCard({
               : 'bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white'
           }`}
         >
-          {state === 'done'    ? <><CheckCircle2 size={12} /> Installed</> :
-           state === 'error'   ? <><AlertCircle  size={12} /> Retry</>    :
-           state === 'loading' ? 'Installing…' :
-                                 <><Download size={12} /> Install</>}
+          {state === 'done'    ? <><CheckCircle2 size={12} /> Installé</> :
+           state === 'error'   ? <><AlertCircle  size={12} /> Réessayer</>    :
+           state === 'loading' ? 'Installation…' :
+                                 <><Download size={12} /> Installer</>}
         </button>
       </div>
+
+      {/* Post-install info */}
+      {state === 'done' && installed && (
+        <div className="space-y-1">
+          {installed.versionNumber && (
+            <p className="text-[11px] text-slate-500">
+              Installé <span className="text-slate-300">v{installed.versionNumber}</span>
+              {installed.gameVersions?.length ? (
+                <> — MC <span className="text-slate-300">{installed.gameVersions.slice(-3).join(', ')}{installed.gameVersions.length > 3 ? '…' : ''}</span></>
+              ) : null}
+            </p>
+          )}
+          {versionMismatch && (
+            <p className="text-[11px] text-amber-400 flex items-center gap-1">
+              <AlertCircle size={11} />
+              Peut ne pas être compatible avec votre serveur ({gameVersion})
+            </p>
+          )}
+        </div>
+      )}
 
       {state === 'error' && errMsg && (
         <p className="text-red-400 text-[11px] leading-relaxed">{errMsg}</p>
@@ -108,18 +168,76 @@ function PluginCard({
   )
 }
 
+function InstalledRow({ file, onDelete, deleting }: {
+  file: InstalledFile; onDelete: () => void; deleting: boolean
+}) {
+  const [confirm, setConfirm] = useState(false)
+
+  function handleDelete() {
+    if (!confirm) { setConfirm(true); return }
+    onDelete()
+  }
+
+  return (
+    <div className="flex items-center gap-3 px-4 py-3 rounded-xl panel border border-white/[0.06]">
+      <Package size={14} className="text-slate-500 shrink-0" />
+      <p className="flex-1 text-sm text-slate-200 font-mono truncate">{file.name}</p>
+      <span className="text-[11px] text-slate-600 shrink-0">{fmtSize(file.size)}</span>
+      <button
+        onClick={handleDelete}
+        onBlur={() => setConfirm(false)}
+        disabled={deleting}
+        className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold transition-all shrink-0 ${
+          confirm
+            ? 'bg-red-600/20 text-red-400 border border-red-600/30'
+            : 'text-slate-600 hover:text-red-400 hover:bg-red-500/10'
+        } disabled:opacity-40`}
+      >
+        {deleting ? (
+          <span className="w-3 h-3 border border-current border-t-transparent rounded-full animate-spin" />
+        ) : (
+          <Trash2 size={12} />
+        )}
+        {confirm && !deleting ? 'Confirmer' : null}
+      </button>
+    </div>
+  )
+}
+
 export default function PluginsTab({ serverId, folder, sources, loader }: Props) {
+  const [mode, setMode] = useState<'search' | 'installed'>('search')
   const [query, setQuery] = useState('')
   const [source, setSource] = useState<'spiget' | 'modrinth'>(sources[0])
   const [results, setResults] = useState<PluginResult[] | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const inputRef = useRef<HTMLInputElement>(null)
-  const lastQuery = useRef('')
+  const gameVersion = useGameVersion(serverId)
+
+  const { data: installedFiles = [], refetch: refetchInstalled, isFetching: loadingInstalled } = useQuery<InstalledFile[]>({
+    queryKey: ['plugins-installed', serverId, folder],
+    queryFn: async () => {
+      const data: any = await api.get(`/client/servers/${serverId}/files/list?directory=${encodeURIComponent('/' + folder)}`)
+      const arr: any[] = Array.isArray(data) ? data : (data?.contents ?? [])
+      return arr
+        .filter((f: any) => !f.directory && f.name.endsWith('.jar'))
+        .map((f: any) => ({ name: f.name, size: f.size ?? 0, modified: f.modified ?? '' }))
+        .sort((a: InstalledFile, b: InstalledFile) => a.name.localeCompare(b.name))
+    },
+    enabled: mode === 'installed',
+  })
+
+  const [deletingFile, setDeletingFile] = useState<string | null>(null)
+  const deleteMutation = useMutation({
+    mutationFn: (fileName: string) => {
+      setDeletingFile(fileName)
+      return api.post(`/client/servers/${serverId}/files/delete`, { root: `/${folder}`, files: [fileName] })
+    },
+    onSettled: () => { setDeletingFile(null); refetchInstalled() },
+  })
 
   async function doSearch(q: string, src: 'spiget' | 'modrinth') {
     if (!q.trim()) return
-    lastQuery.current = q
     setLoading(true)
     setError(null)
     try {
@@ -150,84 +268,155 @@ export default function PluginsTab({ serverId, folder, sources, loader }: Props)
 
   return (
     <div className="flex flex-col h-full">
-      {/* Search bar */}
-      <div className="px-6 pt-6 pb-4 shrink-0 space-y-3">
-        <form onSubmit={handleSubmit} className="flex gap-2">
-          <div className="relative flex-1">
-            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-600 pointer-events-none" />
-            <input
-              ref={inputRef}
-              value={query}
-              onChange={e => setQuery(e.target.value)}
-              placeholder={`Search ${label.toLowerCase()}…`}
-              className="w-full bg-black/30 border border-white/[0.08] rounded-lg pl-9 pr-4 py-2 text-slate-200 text-sm placeholder-slate-600 focus:outline-none focus:border-blue-500/50 transition-colors"
-            />
-          </div>
-          <button
-            type="submit"
-            disabled={!query.trim() || loading}
-            className="px-4 py-2 bg-blue-600 hover:bg-blue-500 disabled:opacity-40 text-white text-sm font-semibold rounded-lg transition-all"
-          >
-            {loading ? 'Searching…' : 'Search'}
-          </button>
-        </form>
+      {/* Mode toggle */}
+      <div className="px-6 pt-6 pb-0 shrink-0">
+        <div className="flex gap-1 border-b border-white/[0.06] pb-0">
+          {(['search', 'installed'] as const).map(m => (
+            <button
+              key={m}
+              onClick={() => setMode(m)}
+              className={`px-4 py-2 text-sm font-medium transition-all border-b-2 -mb-px ${
+                mode === m
+                  ? 'text-white border-blue-500'
+                  : 'text-slate-500 border-transparent hover:text-slate-300'
+              }`}
+            >
+              {m === 'search' ? 'Rechercher' : `Installés`}
+            </button>
+          ))}
+        </div>
+      </div>
 
-        {/* Source tabs */}
-        {sources.length > 1 && (
-          <div className="flex gap-1">
-            {sources.map(s => (
+      {/* ── Search mode ── */}
+      {mode === 'search' && (
+        <>
+          <div className="px-6 pt-4 pb-4 shrink-0 space-y-3">
+            <form onSubmit={handleSubmit} className="flex gap-2">
+              <div className="relative flex-1">
+                <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-600 pointer-events-none" />
+                <input
+                  ref={inputRef}
+                  value={query}
+                  onChange={e => setQuery(e.target.value)}
+                  placeholder={`Rechercher des ${label.toLowerCase()}…`}
+                  className="w-full bg-black/30 border border-white/[0.08] rounded-lg pl-9 pr-4 py-2 text-slate-200 text-sm placeholder-slate-600 focus:outline-none focus:border-blue-500/50 transition-colors"
+                />
+              </div>
               <button
-                key={s}
-                onClick={() => switchSource(s)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all border ${
-                  source === s
-                    ? 'bg-blue-500/[0.14] text-blue-300 border-blue-500/25'
-                    : 'text-slate-500 border-transparent hover:text-slate-300 hover:bg-white/[0.05]'
-                }`}
+                type="submit"
+                disabled={!query.trim() || loading}
+                className="px-4 py-2 bg-blue-600 hover:bg-blue-500 disabled:opacity-40 text-white text-sm font-semibold rounded-lg transition-all"
               >
-                {s === 'spiget' ? 'SpigotMC' : 'Modrinth'}
+                {loading ? 'Recherche…' : 'Rechercher'}
               </button>
-            ))}
-          </div>
-        )}
-      </div>
+            </form>
 
-      {/* Results */}
-      <div className="flex-1 overflow-y-auto px-6 pb-6">
-        {error ? (
-          <div className="flex items-center gap-2 text-red-400 text-sm">
-            <AlertCircle size={14} /> {error}
-          </div>
-        ) : results === null ? (
-          <div className="flex-1 flex items-center justify-center py-16">
-            <div className="text-center">
-              <Icon size={32} className="text-slate-700 mx-auto mb-3" />
-              <p className="text-slate-400 text-sm font-medium">Search for {label.toLowerCase()}</p>
-              <p className="text-slate-600 text-xs mt-1">Type a name above to find {label.toLowerCase()} to install</p>
+            <div className="flex items-center justify-between">
+              {sources.length > 1 ? (
+                <div className="flex gap-1">
+                  {sources.map(s => (
+                    <button
+                      key={s}
+                      onClick={() => switchSource(s)}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all border ${
+                        source === s
+                          ? 'bg-blue-500/[0.14] text-blue-300 border-blue-500/25'
+                          : 'text-slate-500 border-transparent hover:text-slate-300 hover:bg-white/[0.05]'
+                      }`}
+                    >
+                      {s === 'spiget' ? 'SpigotMC' : 'Modrinth'}
+                    </button>
+                  ))}
+                </div>
+              ) : <div />}
+              {gameVersion && (
+                <span className="text-[11px] text-slate-600">MC {gameVersion}</span>
+              )}
             </div>
           </div>
-        ) : results.length === 0 ? (
-          <div className="flex items-center justify-center py-16">
-            <div className="text-center">
-              <Icon size={32} className="text-slate-700 mx-auto mb-3" />
-              <p className="text-slate-400 text-sm font-medium">No results found</p>
-              <p className="text-slate-600 text-xs mt-1">Try a different search term or source</p>
+
+          <div className="flex-1 overflow-y-auto px-6 pb-6">
+            {error ? (
+              <div className="flex items-center gap-2 text-red-400 text-sm">
+                <AlertCircle size={14} /> {error}
+              </div>
+            ) : results === null ? (
+              <div className="flex-1 flex items-center justify-center py-16">
+                <div className="text-center">
+                  <Icon size={32} className="text-slate-700 mx-auto mb-3" />
+                  <p className="text-slate-400 text-sm font-medium">Rechercher des {label.toLowerCase()}</p>
+                  <p className="text-slate-600 text-xs mt-1">Tapez un nom ci-dessus pour trouver des {label.toLowerCase()} à installer</p>
+                </div>
+              </div>
+            ) : results.length === 0 ? (
+              <div className="flex items-center justify-center py-16">
+                <div className="text-center">
+                  <Icon size={32} className="text-slate-700 mx-auto mb-3" />
+                  <p className="text-slate-400 text-sm font-medium">Aucun résultat</p>
+                  <p className="text-slate-600 text-xs mt-1">Essayez un autre terme ou une autre source</p>
+                </div>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+                {results.map(p => (
+                  <PluginCard
+                    key={`${p.source}-${p.id}`}
+                    plugin={p}
+                    serverId={serverId}
+                    folder={folder}
+                    loader={loader}
+                    gameVersion={gameVersion}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+        </>
+      )}
+
+      {/* ── Installed mode ── */}
+      {mode === 'installed' && (
+        <div className="flex-1 overflow-y-auto px-6 py-4">
+          <div className="flex items-center justify-between mb-3">
+            <p className="text-slate-500 text-xs">
+              {installedFiles.length} fichier{installedFiles.length !== 1 ? 's' : ''} dans /{folder}
+            </p>
+            <button
+              onClick={() => refetchInstalled()}
+              disabled={loadingInstalled}
+              className="flex items-center gap-1.5 text-slate-500 hover:text-slate-300 text-xs transition-colors"
+            >
+              <RefreshCw size={11} className={loadingInstalled ? 'animate-spin' : ''} />
+              Actualiser
+            </button>
+          </div>
+
+          {loadingInstalled && installedFiles.length === 0 ? (
+            <div className="flex items-center justify-center py-16">
+              <span className="w-5 h-5 border-2 border-white/20 border-t-white/60 rounded-full animate-spin" />
             </div>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
-            {results.map(p => (
-              <PluginCard
-                key={`${p.source}-${p.id}`}
-                plugin={p}
-                serverId={serverId}
-                folder={folder}
-                loader={loader}
-              />
-            ))}
-          </div>
-        )}
-      </div>
+          ) : installedFiles.length === 0 ? (
+            <div className="flex items-center justify-center py-16">
+              <div className="text-center">
+                <Icon size={32} className="text-slate-700 mx-auto mb-3" />
+                <p className="text-slate-400 text-sm font-medium">Aucun {label.toLowerCase()} installé</p>
+                <p className="text-slate-600 text-xs mt-1">Le dossier /{folder} est vide</p>
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {installedFiles.map(f => (
+                <InstalledRow
+                  key={f.name}
+                  file={f}
+                  onDelete={() => deleteMutation.mutate(f.name)}
+                  deleting={deletingFile === f.name}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   )
 }

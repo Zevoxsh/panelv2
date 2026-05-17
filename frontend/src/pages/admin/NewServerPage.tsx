@@ -253,14 +253,39 @@ export default function NewServerPage() {
           ) : (
             <div className="space-y-3">
               {eggVars.map(v => (
-                <Field key={v.id} label={v.name} hint={v.description ?? undefined}>
+                <div key={v.id} className="bg-black/20 border border-border rounded-xl p-4 space-y-3">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-white font-semibold text-sm">{v.name}</p>
+                      {v.description && (
+                        <p className="text-muted text-xs mt-1 leading-relaxed">{v.description}</p>
+                      )}
+                    </div>
+                    {!v.userViewable && (
+                      <span className="shrink-0 text-[10px] font-semibold px-2 py-0.5 rounded border bg-yellow-500/[0.08] text-yellow-400 border-yellow-500/20">
+                        Non visible
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-slate-500">
+                    <span>
+                      Startup:{' '}
+                      <code className="font-mono text-blue-400 bg-blue-500/10 px-1 rounded">
+                        {`{{${v.envVariable}}}`}
+                      </code>
+                    </span>
+                    {v.rules && (
+                      <span>
+                        Règles: <code className="font-mono text-slate-400">{v.rules}</code>
+                      </span>
+                    )}
+                  </div>
                   <Input
                     value={variables[v.envVariable] ?? v.defaultValue}
                     onChange={e => setVariables(prev => ({ ...prev, [v.envVariable]: e.target.value }))}
-                    placeholder={v.defaultValue}
+                    placeholder={v.defaultValue || v.envVariable}
                   />
-                  <p className="text-xs text-muted/60 mt-0.5 font-mono">{v.envVariable}</p>
-                </Field>
+                </div>
               ))}
             </div>
           )}

@@ -196,6 +196,7 @@ export async function serversPluginsRoutes(app: FastifyInstance) {
       resourceId?: string
       projectId?: string
       loader?: string
+      gameVersion?: string
       folder: 'plugins' | 'mods'
     }
 
@@ -205,6 +206,7 @@ export async function serversPluginsRoutes(app: FastifyInstance) {
     try {
       let downloadUrl: string
       let fileName: string
+      let extraInfo: { versionNumber?: string; gameVersions?: string[] } = {}
 
       if (body.source === 'spiget') {
         if (!body.resourceId) return reply.code(400).send({ error: 'resourceId required' })
@@ -236,16 +238,43 @@ export async function serversPluginsRoutes(app: FastifyInstance) {
       } else if (body.source === 'modrinth') {
         if (!body.projectId) return reply.code(400).send({ error: 'projectId required' })
 
-        const loaderParam = body.loader ? `&loaders=${encodeURIComponent(JSON.stringify([body.loader]))}` : ''
-        type MrVersion = { files: { url: string; filename: string; primary: boolean }[] }
-        const versions = await fetchJson<MrVersion[]>(
-          `https://api.modrinth.com/v2/project/${body.projectId}/version?limit=5${loaderParam}`,
+        type MrVersion = {
+          version_number: string
+          game_versions: string[]
+          files: { url: string; filename: string; primary: boolean }[]
+        }
+
+        // For plugins, accept all bukkit-compatible loaders so we don't miss versions
+        // tagged as 'spigot' or 'bukkit' that work perfectly on Paper.
+        // For mods, keep the exact loader (fabric ≠ forge).
+        const loaders = body.folder === 'plugins'
+          ? ['paper', 'purpur', 'spigot', 'bukkit']
+          : body.loader ? [body.loader] : []
+
+        const loaderParam = loaders.length
+          ? `&loaders=${encodeURIComponent(JSON.stringify(loaders))}`
+          : ''
+        const gameParam = body.gameVersion
+          ? `&game_versions=${encodeURIComponent(JSON.stringify([body.gameVersion]))}`
+          : ''
+
+        let versions = await fetchJson<MrVersion[]>(
+          `https://api.modrinth.com/v2/project/${body.projectId}/version?limit=10${loaderParam}${gameParam}`,
         )
+
+        // Fallback: if game version filter returned nothing, try without it
+        if (body.gameVersion && Array.isArray(versions) && versions.length === 0) {
+          versions = await fetchJson<MrVersion[]>(
+            `https://api.modrinth.com/v2/project/${body.projectId}/version?limit=10${loaderParam}`,
+          )
+        }
+
         const latest = Array.isArray(versions) ? versions[0] : null
-        if (!latest?.files?.length) return reply.code(404).send({ error: 'No downloadable version found for this loader/version.' })
+        if (!latest?.files?.length) return reply.code(404).send({ error: 'No downloadable version found. The project may not support your loader.' })
         const file = latest.files.find(f => f.primary) ?? latest.files[0]
         downloadUrl = file.url
         fileName = file.filename
+        extraInfo = { versionNumber: latest.version_number, gameVersions: latest.game_versions ?? [] }
 
       } else {
         return reply.code(400).send({ error: 'Unknown source' })
@@ -261,7 +290,7 @@ export async function serversPluginsRoutes(app: FastifyInstance) {
       const targetPath = `/${body.folder}/${fileName}`
       await writeBinaryToWings(ctx.node, id, targetPath, fileData)
 
-      return { ok: true, fileName, path: targetPath }
+      return { ok: true, fileName, path: targetPath, ...extraInfo }
     } catch (e: any) {
       return reply.code(502).send({ error: e.message })
     }

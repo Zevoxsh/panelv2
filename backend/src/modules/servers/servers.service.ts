@@ -73,6 +73,7 @@ export async function getServerWithNode(id: string) {
     .from(servers)
     .leftJoin(nodes, eq(servers.nodeId, nodes.id))
     .leftJoin(allocations, eq(servers.allocationId, allocations.id))
+    .leftJoin(eggs, eq(servers.eggId, eggs.id))
     .where(eq(servers.id, id))
 
   return row ?? null
@@ -137,7 +138,7 @@ export async function buildWingsServerPayload(serverId: string) {
   const row = await getServerWithNode(serverId)
   if (!row) return null
 
-  const { servers: server, nodes: node, allocations: alloc } = row
+  const { servers: server, nodes: node, allocations: alloc, eggs: egg } = row
   if (!node || !alloc) return null
 
   const vars = await getServerVariables(serverId)
@@ -146,9 +147,18 @@ export async function buildWingsServerPayload(serverId: string) {
     if (v.envVariable) environment[v.envVariable] = v.value
   }
 
+  const scripts = egg?.installScript ? {
+    install: {
+      script: egg.installScript,
+      container: egg.installContainer || 'ghcr.io/pterodactyl/installers:alpine',
+      entry_point: egg.installEntrypoint || 'ash',
+    },
+  } : undefined
+
   return {
     uuid: server.id,
     start_on_completion: false,
+    ...(scripts ? { scripts } : {}),
     settings: {
       uuid: server.id,
       meta: { name: server.name, description: server.description ?? '' },
@@ -173,7 +183,6 @@ export async function buildWingsServerPayload(serverId: string) {
       allocations: {
         force_outgoing_ip: false,
         default: { ip: alloc.ip, port: alloc.port },
-        // mappings tells Wings which ports to publish in Docker for this server
         mappings: { [alloc.ip]: [alloc.port] },
       },
     },
