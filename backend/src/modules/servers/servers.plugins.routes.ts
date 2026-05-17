@@ -182,6 +182,32 @@ export async function serversPluginsRoutes(app: FastifyInstance) {
         return results
       }
 
+      if (source === 'hangar') {
+        type HangarProject = {
+          name: string
+          namespace: { owner: string; slug: string }
+          stats: { downloads: number }
+          description: string
+          iconUrl?: string
+          lastVersion?: string
+        }
+        type HangarSearch = { result: HangarProject[] }
+        const data = await fetchJson<HangarSearch>(
+          `https://hangar.papermc.io/api/v1/projects?q=${encodeURIComponent(q.trim())}&limit=20`,
+        )
+        const results: PluginResult[] = (data.result ?? []).map(p => ({
+          id: `${p.namespace.owner}/${p.namespace.slug}`,
+          name: p.name,
+          description: p.description ?? '',
+          downloads: p.stats?.downloads ?? 0,
+          version: p.lastVersion ?? '',
+          author: p.namespace.owner,
+          iconUrl: p.iconUrl ?? '',
+          source: 'hangar',
+        }))
+        return results
+      }
+
       return reply.code(400).send({ error: 'Unknown source' })
     } catch (e: any) {
       return reply.code(502).send({ error: `External API error: ${e.message}` })
@@ -192,7 +218,7 @@ export async function serversPluginsRoutes(app: FastifyInstance) {
   app.post('/api/client/servers/:id/plugins/install', { preHandler: requireAuth }, async (req, reply) => {
     const { id } = req.params as { id: string }
     const body = req.body as {
-      source: 'spiget' | 'modrinth'
+      source: 'spiget' | 'modrinth' | 'hangar'
       resourceId?: string
       projectId?: string
       loader?: string
@@ -214,6 +240,7 @@ export async function serversPluginsRoutes(app: FastifyInstance) {
         type SpigetResource = {
           name: string
           premium: boolean
+          file: { type: string; externalUrl?: string }
         }
         const info = await fetchJson<SpigetResource>(
           `https://api.spiget.org/v2/resources/${body.resourceId}`,
@@ -221,10 +248,34 @@ export async function serversPluginsRoutes(app: FastifyInstance) {
         if (info.premium) {
           return reply.code(422).send({ error: 'Plugin premium — achetez-le sur SpigotMC puis uploadez le JAR manuellement.' })
         }
-        downloadUrl = `https://api.spiget.org/v2/resources/${body.resourceId}/download`
+
         fileName = info.name
           ? `${info.name.replace(/[^a-zA-Z0-9._-]/g, '_')}.jar`
           : `spiget-${body.resourceId}.jar`
+
+        // If externally hosted on GitHub, resolve the actual JAR asset via GitHub API
+        const extUrl = info.file?.externalUrl ?? ''
+        const ghMatch = extUrl.match(/github\.com\/([^/]+)\/([^/]+)/)
+        if (ghMatch) {
+          const [, owner, repo] = ghMatch
+          try {
+            type GhRelease = { assets: { name: string; browser_download_url: string }[] }
+            const release = await fetchJson<GhRelease>(
+              `https://api.github.com/repos/${owner}/${repo}/releases/latest`,
+            )
+            const jar = release.assets?.find(a => a.name.endsWith('.jar'))
+            if (jar) {
+              downloadUrl = jar.browser_download_url
+              fileName = jar.name
+            } else {
+              downloadUrl = `https://api.spiget.org/v2/resources/${body.resourceId}/download`
+            }
+          } catch {
+            downloadUrl = `https://api.spiget.org/v2/resources/${body.resourceId}/download`
+          }
+        } else {
+          downloadUrl = `https://api.spiget.org/v2/resources/${body.resourceId}/download`
+        }
 
       } else if (body.source === 'modrinth') {
         if (!body.projectId) return reply.code(400).send({ error: 'projectId required' })
@@ -266,6 +317,31 @@ export async function serversPluginsRoutes(app: FastifyInstance) {
         downloadUrl = file.url
         fileName = file.filename
         extraInfo = { versionNumber: latest.version_number, gameVersions: latest.game_versions ?? [] }
+
+      } else if (body.source === 'hangar') {
+        if (!body.projectId) return reply.code(400).send({ error: 'projectId required' })
+        const parts = body.projectId.split('/')
+        if (parts.length !== 2) return reply.code(400).send({ error: 'Invalid Hangar project ID' })
+        const [owner, slug] = parts
+
+        type HangarVersion = {
+          name: string
+          downloads: {
+            PAPER?: { fileInfo?: { name: string }; externalUrl?: string }
+          }
+        }
+        type HangarVersionList = { result: HangarVersion[] }
+
+        const vdata = await fetchJson<HangarVersionList>(
+          `https://hangar.papermc.io/api/v1/projects/${encodeURIComponent(owner)}/${encodeURIComponent(slug)}/versions?limit=1&platform=PAPER`,
+        )
+        const latest = vdata.result?.[0]
+        if (!latest) return reply.code(404).send({ error: 'Aucune version PAPER trouvée sur Hangar.' })
+
+        const paperInfo = latest.downloads?.PAPER
+        downloadUrl = `https://hangar.papermc.io/api/v1/projects/${encodeURIComponent(owner)}/${encodeURIComponent(slug)}/versions/${encodeURIComponent(latest.name)}/PAPER/download`
+        fileName = paperInfo?.fileInfo?.name ?? `${slug}-${latest.name}.jar`
+        extraInfo = { versionNumber: latest.name }
 
       } else {
         return reply.code(400).send({ error: 'Unknown source' })

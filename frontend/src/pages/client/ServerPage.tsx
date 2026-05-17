@@ -941,7 +941,7 @@ export default function ServerPage() {
           <PluginsTab
             serverId={server.id}
             folder="plugins"
-            sources={['spiget', 'modrinth']}
+            sources={['hangar', 'modrinth', 'spiget']}
             loader={pluginLoader}
           />
         </div>

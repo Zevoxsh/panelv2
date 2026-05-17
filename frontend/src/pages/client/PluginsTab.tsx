@@ -11,7 +11,7 @@ interface PluginResult {
   version: string
   author: string
   iconUrl: string
-  source: 'spiget' | 'modrinth'
+  source: 'spiget' | 'modrinth' | 'hangar'
 }
 
 interface InstallResult {
@@ -30,7 +30,7 @@ interface InstalledFile {
 interface Props {
   serverId: string
   folder: 'plugins' | 'mods'
-  sources: ('spiget' | 'modrinth')[]
+  sources: ('spiget' | 'modrinth' | 'hangar')[]
   loader?: string
 }
 
@@ -104,9 +104,11 @@ function PluginCard({
             <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded border ${
               plugin.source === 'spiget'
                 ? 'bg-orange-500/[0.10] text-orange-400 border-orange-500/20'
+                : plugin.source === 'hangar'
+                ? 'bg-blue-500/[0.10] text-blue-400 border-blue-500/20'
                 : 'bg-emerald-500/[0.10] text-emerald-400 border-emerald-500/20'
             }`}>
-              {plugin.source === 'spiget' ? 'SpigotMC' : 'Modrinth'}
+              {plugin.source === 'spiget' ? 'SpigotMC' : plugin.source === 'hangar' ? 'Hangar' : 'Modrinth'}
             </span>
           </div>
         </div>
@@ -207,7 +209,7 @@ function InstalledRow({ file, onDelete, deleting }: {
 export default function PluginsTab({ serverId, folder, sources, loader }: Props) {
   const [mode, setMode] = useState<'search' | 'installed'>('search')
   const [query, setQuery] = useState('')
-  const [source, setSource] = useState<'spiget' | 'modrinth'>(sources[0])
+  const [source, setSource] = useState<'spiget' | 'modrinth' | 'hangar'>(sources[0])
   const [results, setResults] = useState<PluginResult[] | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -236,7 +238,7 @@ export default function PluginsTab({ serverId, folder, sources, loader }: Props)
     onSettled: () => { setDeletingFile(null); refetchInstalled() },
   })
 
-  async function doSearch(q: string, src: 'spiget' | 'modrinth') {
+  async function doSearch(q: string, src: 'spiget' | 'modrinth' | 'hangar') {
     if (!q.trim()) return
     setLoading(true)
     setError(null)
@@ -258,7 +260,7 @@ export default function PluginsTab({ serverId, folder, sources, loader }: Props)
     doSearch(query, source)
   }
 
-  function switchSource(s: 'spiget' | 'modrinth') {
+  function switchSource(s: 'spiget' | 'modrinth' | 'hangar') {
     setSource(s)
     if (results !== null && query.trim()) doSearch(query, s)
   }
@@ -324,7 +326,7 @@ export default function PluginsTab({ serverId, folder, sources, loader }: Props)
                           : 'text-slate-500 border-transparent hover:text-slate-300 hover:bg-white/[0.05]'
                       }`}
                     >
-                      {s === 'spiget' ? 'SpigotMC' : 'Modrinth'}
+                      {s === 'spiget' ? 'SpigotMC' : s === 'hangar' ? 'Hangar' : 'Modrinth'}
                     </button>
                   ))}
                 </div>

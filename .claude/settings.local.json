@@ -100,7 +100,13 @@
       "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\Administrator\\\\Documents\\\\panel\\\\frontend\" -Recurse -Filter \"*.routes.ts\")",
       "Bash(Select-Object -First 20)",
       "Bash(cmd *)",
-      "Bash(del C:\\\\Users\\\\Administrator\\\\Documents\\\\panel\\\\backend\\\\update-paper-egg.ts)"
+      "Bash(del C:\\\\Users\\\\Administrator\\\\Documents\\\\panel\\\\backend\\\\update-paper-egg.ts)",
+      "WebFetch(domain:api.spiget.org)",
+      "WebFetch(domain:spiget.org)",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "WebSearch",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:docker-minecraft-server.readthedocs.io)"
     ]
   }
 }
