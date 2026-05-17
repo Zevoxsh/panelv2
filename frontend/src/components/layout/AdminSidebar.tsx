@@ -1,7 +1,7 @@
 import { NavLink, useNavigate } from 'react-router-dom'
 import {
   LayoutDashboard, Settings, Palette, Key, Database,
-  MapPin, Cpu, Server, Users, HardDrive, Egg, ArrowLeft,
+  MapPin, Cpu, Server, Users, HardDrive, Egg, ArrowLeft, Package2,
 } from 'lucide-react'
 
 const sections = [
@@ -27,8 +27,9 @@ const sections = [
   {
     label: 'Services',
     links: [
-      { to: '/admin/mounts', icon: HardDrive, label: 'Mounts', end: true },
-      { to: '/admin/eggs',   icon: Egg,       label: 'Eggs',   end: false },
+      { to: '/admin/mounts',  icon: HardDrive, label: 'Mounts', end: true },
+      { to: '/admin/eggs',    icon: Egg,       label: 'Eggs',   end: false },
+      { to: '/admin/mcjars',  icon: Package2,  label: 'MCJars', end: true },
     ],
   },
 ]

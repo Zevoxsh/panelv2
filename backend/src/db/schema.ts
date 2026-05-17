@@ -212,6 +212,30 @@ export const mounts = pgTable('mounts', {
   createdAt:     timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 })
 
+// ── MCJars ────────────────────────────────────────────────────────────────────
+export const mcjarsSettings = pgTable('mcjars_settings', {
+  id:        integer('id').primaryKey().default(1),
+  orgKey:    varchar('org_key', { length: 255 }),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+})
+
+export const mcjarsTypeConfig = pgTable('mcjars_type_config', {
+  type:      varchar('type', { length: 50 }).primaryKey(),
+  category:  varchar('category', { length: 100 }),
+  sortOrder: integer('sort_order').notNull().default(0),
+  hidden:    boolean('hidden').notNull().default(false),
+  eggId:     uuid('egg_id').references(() => eggs.id, { onDelete: 'set null' }),
+})
+
+export const mcjarsInstalls = pgTable('mcjars_installs', {
+  id:          uuid('id').primaryKey().defaultRandom(),
+  serverId:    uuid('server_id').references(() => servers.id, { onDelete: 'set null' }),
+  type:        varchar('type', { length: 50 }).notNull(),
+  version:     varchar('version', { length: 50 }).notNull(),
+  build:       varchar('build', { length: 50 }).notNull(),
+  installedAt: timestamp('installed_at', { withTimezone: true }).notNull().defaultNow(),
+})
+
 export type User = typeof users.$inferSelect
 export type NewUser = typeof users.$inferInsert
 export type ApiKey = typeof apiKeys.$inferSelect

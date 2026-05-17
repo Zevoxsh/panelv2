@@ -22,6 +22,7 @@ import ServerDetailAdminPage from './pages/admin/ServerDetailAdminPage'
 import MountsPage from './pages/admin/MountsPage'
 import SettingsPage from './pages/admin/SettingsPage'
 import DatabasesAdminPage from './pages/admin/DatabasesAdminPage'
+import MCJarsPage from './pages/admin/MCJarsPage'
 import ServerPage from './pages/client/ServerPage'
 
 function RequireAuth({ adminOnly = false }: { adminOnly?: boolean }) {
@@ -75,6 +76,7 @@ function AppRoutes() {
           <Route path="/admin/mounts" element={<MountsPage />} />
           <Route path="/admin/settings" element={<SettingsPage />} />
           <Route path="/admin/databases" element={<DatabasesAdminPage />} />
+          <Route path="/admin/mcjars" element={<MCJarsPage />} />
         </Route>
       </Route>
 

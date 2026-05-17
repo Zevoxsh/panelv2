@@ -23,6 +23,7 @@ import { mountsRoutes } from './modules/mounts/mounts.routes.js'
 import { remoteRoutes } from './modules/remote/remote.routes.js'
 import { serversPlayersRoutes } from './modules/servers/servers.players.routes.js'
 import { serversPluginsRoutes } from './modules/servers/servers.plugins.routes.js'
+import { mcjarsRoutes } from './modules/mcjars/mcjars.routes.js'
 
 export function buildApp() {
   const app = Fastify({ logger: process.env.NODE_ENV !== 'test' })
@@ -62,6 +63,7 @@ export function buildApp() {
   app.register(remoteRoutes)
   app.register(serversPlayersRoutes)
   app.register(serversPluginsRoutes)
+  app.register(mcjarsRoutes)
 
   app.get('/health', async () => ({ status: 'ok' }))
 

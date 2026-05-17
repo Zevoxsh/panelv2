@@ -6,6 +6,7 @@ import {
   ArrowLeft, CheckCircle, Clock, PauseCircle, Pause, Play,
   RotateCcw, Trash2, ExternalLink, RefreshCw,
 } from 'lucide-react'
+import MCJarsInstallModal from '../../components/MCJarsInstallModal'
 
 interface ServerDetail {
   id: string; name: string; description: string | null
@@ -55,7 +56,7 @@ function TabBtn({ label, active, onClick }: { label: string; active: boolean; on
 }
 
 // ── Overview Tab ──────────────────────────────────────────────────────────────
-function OverviewTab({ server }: { server: ServerDetail }) {
+function OverviewTab({ server, onMcjarsInstall }: { server: ServerDetail; onMcjarsInstall: () => void }) {
   const queryClient = useQueryClient()
 
   const suspendMutation = useMutation({
@@ -131,6 +132,13 @@ function OverviewTab({ server }: { server: ServerDetail }) {
             className="flex items-center gap-2 text-sm font-medium px-4 py-2 rounded-lg border border-blue-700 text-blue-400 hover:bg-blue-950/40 transition-colors disabled:opacity-50"
           >
             <RotateCcw size={13} /> Réinstaller
+          </button>
+          <button
+            onClick={onMcjarsInstall}
+            className="flex items-center gap-2 text-sm font-medium px-4 py-2 rounded-lg border border-teal-700 text-teal-400 hover:bg-teal-950/40 transition-colors"
+          >
+            <img src="https://versions.mcjars.app/icons/PAPER" alt="" className="w-3.5 h-3.5 rounded" />
+            MCJars
           </button>
           <button
             onClick={() => syncMutation.mutate()}
@@ -407,6 +415,8 @@ export default function ServerDetailAdminPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const [tab, setTab] = useState<Tab>('overview')
+  const [mcjarsOpen, setMcjarsOpen] = useState(false)
+  const queryClient = useQueryClient()
 
   const { data: server, isLoading } = useQuery<ServerDetail>({
     queryKey: ['admin', 'servers', id],
@@ -438,10 +448,18 @@ export default function ServerDetailAdminPage() {
         {TABS.map(t => <TabBtn key={t} label={TAB_LABELS[t]} active={tab === t} onClick={() => setTab(t)} />)}
       </div>
 
-      {tab === 'overview' && <OverviewTab server={server} />}
+      {tab === 'overview' && <OverviewTab server={server} onMcjarsInstall={() => setMcjarsOpen(true)} />}
       {tab === 'build' && <BuildTab server={server} />}
       {tab === 'variables' && <VariablesTab server={server} />}
       {tab === 'danger' && <DangerTab server={server} />}
+
+      {mcjarsOpen && (
+        <MCJarsInstallModal
+          serverId={server.id}
+          onClose={() => setMcjarsOpen(false)}
+          onSuccess={() => queryClient.invalidateQueries({ queryKey: ['admin', 'servers', server.id] })}
+        />
+      )}
     </div>
   )
 }

@@ -106,7 +106,13 @@
       "WebFetch(domain:raw.githubusercontent.com)",
       "WebSearch",
       "WebFetch(domain:github.com)",
-      "WebFetch(domain:docker-minecraft-server.readthedocs.io)"
+      "WebFetch(domain:docker-minecraft-server.readthedocs.io)",
+      "WebFetch(domain:api.mcjars.app)",
+      "WebFetch(domain:mcjars.app)",
+      "WebFetch(domain:versions.mcjars.app)",
+      "WebFetch(domain:mcjars-azurhosts.apidocumentation.com)",
+      "WebFetch(domain:mcjarfiles.com)",
+      "WebFetch(domain:www.postman.com)"
     ]
   }
 }
